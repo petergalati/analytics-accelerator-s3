@@ -15,6 +15,9 @@
  */
 package software.amazon.s3.analyticsaccelerator.io.physical.data;
 
+import static software.amazon.s3.analyticsaccelerator.util.Constants.PARQUET_FOOTER_LENGTH_SIZE;
+import static software.amazon.s3.analyticsaccelerator.util.Constants.PARQUET_MAGIC_STR_LENGTH;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +30,7 @@ import software.amazon.s3.analyticsaccelerator.S3SdkObjectClient;
 import software.amazon.s3.analyticsaccelerator.common.Preconditions;
 import software.amazon.s3.analyticsaccelerator.common.telemetry.Operation;
 import software.amazon.s3.analyticsaccelerator.common.telemetry.Telemetry;
+import software.amazon.s3.analyticsaccelerator.io.physical.Cache;
 import software.amazon.s3.analyticsaccelerator.request.GetRequest;
 import software.amazon.s3.analyticsaccelerator.request.ObjectClient;
 import software.amazon.s3.analyticsaccelerator.request.ObjectContent;
@@ -54,6 +58,9 @@ public class Block implements Closeable {
   private final Referrer referrer;
   private final long readTimeout;
   private final int readRetryCount;
+  private final long contentLength;
+  private final boolean enableTailMetadataCaching;
+  private static Cache cache;
 
   @Getter private final long start;
   @Getter private final long end;
@@ -78,28 +85,33 @@ public class Block implements Closeable {
    * @param readRetryCount Number of retries for block read failure
    */
   public Block(
-      @NonNull ObjectKey objectKey,
-      @NonNull ObjectClient objectClient,
-      @NonNull Telemetry telemetry,
-      long start,
-      long end,
-      long generation,
-      @NonNull ReadMode readMode,
-      long readTimeout,
-      int readRetryCount)
-      throws IOException {
+          @NonNull ObjectKey objectKey,
+          @NonNull ObjectClient objectClient,
+          @NonNull Telemetry telemetry,
+          long start,
+          long end,
+          long generation,
+          @NonNull ReadMode readMode,
+          long readTimeout,
+          int readRetryCount,
+          long contentLength,
+          boolean enableTailMetadataCaching)
+          throws IOException {
 
     this(
-        objectKey,
-        objectClient,
-        telemetry,
-        start,
-        end,
-        generation,
-        readMode,
-        readTimeout,
-        readRetryCount,
-        null);
+            objectKey,
+            objectClient,
+            telemetry,
+            start,
+            end,
+            generation,
+            readMode,
+            readTimeout,
+            readRetryCount,
+            contentLength,
+            enableTailMetadataCaching,
+            null,
+            null);
   }
 
   /**
@@ -117,28 +129,31 @@ public class Block implements Closeable {
    * @param streamContext contains audit headers to be attached in the request header
    */
   public Block(
-      @NonNull ObjectKey objectKey,
-      @NonNull ObjectClient objectClient,
-      @NonNull Telemetry telemetry,
-      long start,
-      long end,
-      long generation,
-      @NonNull ReadMode readMode,
-      long readTimeout,
-      int readRetryCount,
-      StreamContext streamContext)
-      throws IOException {
+          @NonNull ObjectKey objectKey,
+          @NonNull ObjectClient objectClient,
+          @NonNull Telemetry telemetry,
+          long start,
+          long end,
+          long generation,
+          @NonNull ReadMode readMode,
+          long readTimeout,
+          int readRetryCount,
+          long contentLength,
+          boolean enableTailMetadataCaching,
+          Cache cache,
+          StreamContext streamContext)
+          throws IOException {
 
     Preconditions.checkArgument(
-        0 <= generation, "`generation` must be non-negative; was: %s", generation);
+            0 <= generation, "`generation` must be non-negative; was: %s", generation);
     Preconditions.checkArgument(0 <= start, "`start` must be non-negative; was: %s", start);
     Preconditions.checkArgument(0 <= end, "`end` must be non-negative; was: %s", end);
     Preconditions.checkArgument(
-        start <= end, "`start` must be less than `end`; %s is not less than %s", start, end);
+            start <= end, "`start` must be less than `end`; %s is not less than %s", start, end);
     Preconditions.checkArgument(
-        0 < readTimeout, "`readTimeout` must be greater than 0; was %s", readTimeout);
+            0 < readTimeout, "`readTimeout` must be greater than 0; was %s", readTimeout);
     Preconditions.checkArgument(
-        0 < readRetryCount, "`readRetryCount` must be greater than 0; was %s", readRetryCount);
+            0 < readRetryCount, "`readRetryCount` must be greater than 0; was %s", readRetryCount);
 
     this.start = start;
     this.end = end;
@@ -152,56 +167,80 @@ public class Block implements Closeable {
     this.referrer = new Referrer(range.toHttpString(), readMode);
     this.readTimeout = readTimeout;
     this.readRetryCount = readRetryCount;
-
+    this.contentLength = contentLength;
+    this.enableTailMetadataCaching = enableTailMetadataCaching;
+    Block.cache = enableTailMetadataCaching ? cache : null;
     generateSourceAndData();
   }
 
   /** Method to help construct source and data */
   private void generateSourceAndData() throws IOException {
     int retries = 0;
-    while (retries < this.readRetryCount) {
+    while (retries < readRetryCount) {
       try {
+        if (enableTailMetadataCaching && isTailMetadata() && cache != null) {
+          String cacheKey = this.generateCacheKey();
+          byte[] cachedData = Block.cache.get(cacheKey.getBytes());
+
+          if (cachedData != null) {
+            data = CompletableFuture.completedFuture(cachedData);
+            LOG.debug("Cache hit for tail metadata: {}", cacheKey);
+            return;
+
+          } else {
+            LOG.debug("Cache miss for tail metadata: {}", cacheKey);
+          }
+        }
+
         GetRequest getRequest =
-            GetRequest.builder()
-                .s3Uri(this.objectKey.getS3URI())
-                .range(this.range)
-                .etag(this.objectKey.getEtag())
-                .referrer(referrer)
-                .build();
+                GetRequest.builder()
+                        .s3Uri(this.objectKey.getS3URI())
+                        .range(this.range)
+                        .etag(this.objectKey.getEtag())
+                        .referrer(referrer)
+                        .build();
 
         this.source =
-            this.telemetry.measureCritical(
-                () ->
-                    Operation.builder()
-                        .name(OPERATION_BLOCK_GET_ASYNC)
-                        .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
-                        .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
-                        .attribute(StreamAttributes.range(this.range))
-                        .attribute(StreamAttributes.generation(generation))
-                        .build(),
-                objectClient.getObject(getRequest, streamContext));
+                this.telemetry.measureCritical(
+                        () ->
+                                Operation.builder()
+                                        .name(OPERATION_BLOCK_GET_ASYNC)
+                                        .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
+                                        .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
+                                        .attribute(StreamAttributes.range(this.range))
+                                        .attribute(StreamAttributes.generation(generation))
+                                        .build(),
+                        objectClient.getObject(getRequest, streamContext));
 
         // Handle IOExceptions when converting stream to byte array
         this.data =
-            this.source.thenApply(
-                objectContent -> {
-                  try {
-                    return StreamUtils.toByteArray(
-                        objectContent, this.objectKey, this.range, this.readTimeout);
-                  } catch (IOException | TimeoutException e) {
-                    throw new RuntimeException(
-                        "Error while converting InputStream to byte array", e);
-                  }
-                });
+                this.source.thenApply(
+                        objectContent -> {
+                          try {
+                            byte[] fetchedData =
+                                    StreamUtils.toByteArray(
+                                            objectContent, this.objectKey, this.range, this.readTimeout);
+
+                            if (enableTailMetadataCaching && this.isTailMetadata() && Block.cache != null) {
+                              Block.cache.set(generateCacheKey().getBytes(), fetchedData);
+                              LOG.debug("Cached tail metadata: {}", generateCacheKey());
+                            }
+
+                            return fetchedData;
+                          } catch (IOException | TimeoutException e) {
+                            throw new RuntimeException(
+                                    "Error while converting InputStream to byte array", e);
+                          }
+                        });
 
         return; // Successfully generated source and data, exit loop
       } catch (RuntimeException e) {
         retries++;
         LOG.debug(
-            "Retry {}/{} - Failed to fetch block data due to: {}",
-            retries,
-            this.readRetryCount,
-            e.getMessage());
+                "Retry {}/{} - Failed to fetch block data due to: {}",
+                retries,
+                this.readRetryCount,
+                e.getMessage());
 
         if (retries >= this.readRetryCount) {
           LOG.error("Max retries reached. Unable to fetch block data.");
@@ -312,16 +351,16 @@ public class Block implements Closeable {
    */
   private byte[] getData() throws IOException {
     return this.telemetry.measureJoinCritical(
-        () ->
-            Operation.builder()
-                .name(OPERATION_BLOCK_GET_JOIN)
-                .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
-                .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
-                .attribute(StreamAttributes.range(this.range))
-                .attribute(StreamAttributes.rangeLength(this.range.getLength()))
-                .build(),
-        this.data,
-        this.readTimeout);
+            () ->
+                    Operation.builder()
+                            .name(OPERATION_BLOCK_GET_JOIN)
+                            .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
+                            .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
+                            .attribute(StreamAttributes.range(this.range))
+                            .attribute(StreamAttributes.rangeLength(this.range.getLength()))
+                            .build(),
+            this.data,
+            this.readTimeout);
   }
 
   /** Closes the {@link Block} and frees up all resources it holds */
@@ -329,5 +368,23 @@ public class Block implements Closeable {
   public void close() {
     // Only the source needs to be canceled, the continuation will cancel on its own
     this.source.cancel(false);
+  }
+
+  /**
+   * Checks if the current block is a tail block.
+   *
+   * @return true if the current block is a tail block, false otherwise
+   */
+  private boolean isTailMetadata() {
+    return start + PARQUET_MAGIC_STR_LENGTH + PARQUET_FOOTER_LENGTH_SIZE == contentLength;
+  }
+
+  /**
+   * Creates a cache key for the current block.
+   *
+   * @return cache key for the current block in the format "{s3Uri}#{etag}#{range}"
+   */
+  private String generateCacheKey() {
+    return objectKey.getS3URI() + "#" + objectKey.getEtag() + "#" + range;
   }
 }
