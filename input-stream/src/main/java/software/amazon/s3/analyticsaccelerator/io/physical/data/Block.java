@@ -15,8 +15,7 @@
  */
 package software.amazon.s3.analyticsaccelerator.io.physical.data;
 
-import static software.amazon.s3.analyticsaccelerator.util.Constants.PARQUET_FOOTER_LENGTH_SIZE;
-import static software.amazon.s3.analyticsaccelerator.util.Constants.PARQUET_MAGIC_STR_LENGTH;
+import static software.amazon.s3.analyticsaccelerator.util.Constants.ONE_MB;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -376,7 +375,9 @@ public class Block implements Closeable {
    * @return true if the current block is a tail block, false otherwise
    */
   private boolean isTailMetadata() {
-    return start + PARQUET_MAGIC_STR_LENGTH + PARQUET_FOOTER_LENGTH_SIZE == contentLength;
+    /** hardcoded right now such that ONE_MB matches DEFAULT_PREFETCH_LARGE_FILE_METADATA_SIZE */
+    //    TODO: find a way to adjust this dynamically instead of just using ONE_MB (if necessary)
+    return start + 8 * ONE_MB + 8 * ONE_MB >= contentLength;
   }
 
   /**

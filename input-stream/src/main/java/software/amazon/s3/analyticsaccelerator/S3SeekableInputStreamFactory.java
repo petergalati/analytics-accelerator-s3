@@ -71,7 +71,6 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
   public S3SeekableInputStreamFactory(
           @NonNull ObjectClient objectClient,
           @NonNull S3SeekableInputStreamConfiguration configuration) {
-    LOG.debug("Initializing S3SeekableInputStreamFactory with configuration: {}", configuration);
     this.configuration = configuration;
     this.telemetry = Telemetry.createTelemetry(configuration.getTelemetryConfiguration());
     this.parquetColumnPrefetchStore =
@@ -93,9 +92,6 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
     this.objectBlobStore =
             new BlobStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration(), cache);
 
-    LOG.info("____________________________________________");
-    LOG.info("Modified version successfully loaded (metadata caching)!");
-    LOG.info("____________________________________________");
   }
 
   /**
