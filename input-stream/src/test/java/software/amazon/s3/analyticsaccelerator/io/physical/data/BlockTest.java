@@ -116,8 +116,7 @@ public class BlockTest {
                 0,
                 ReadMode.SYNC,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -130,8 +129,7 @@ public class BlockTest {
                 0,
                 ReadMode.SYNC,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -144,8 +142,7 @@ public class BlockTest {
                 0,
                 ReadMode.SYNC,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -158,8 +155,7 @@ public class BlockTest {
                 0,
                 null,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
   }
 
   @Test
@@ -178,8 +174,7 @@ public class BlockTest {
                 0,
                 ReadMode.SYNC,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -192,8 +187,7 @@ public class BlockTest {
                 0,
                 ReadMode.SYNC,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -232,8 +226,7 @@ public class BlockTest {
                 TEST_DATA.length(),
                 ReadMode.SYNC,
                 DEFAULT_READ_TIMEOUT,
-                DEFAULT_READ_RETRY_COUNT,
-                null));
+                DEFAULT_READ_RETRY_COUNT));
   }
 
   @SneakyThrows

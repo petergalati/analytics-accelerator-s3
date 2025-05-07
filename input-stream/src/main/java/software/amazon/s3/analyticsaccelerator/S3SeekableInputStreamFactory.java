@@ -69,18 +69,18 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
    * @param configuration {@link S3SeekableInputStream} configuration
    */
   public S3SeekableInputStreamFactory(
-          @NonNull ObjectClient objectClient,
-          @NonNull S3SeekableInputStreamConfiguration configuration) {
+      @NonNull ObjectClient objectClient,
+      @NonNull S3SeekableInputStreamConfiguration configuration) {
     this.configuration = configuration;
     this.telemetry = Telemetry.createTelemetry(configuration.getTelemetryConfiguration());
     this.parquetColumnPrefetchStore =
-            new ParquetColumnPrefetchStore(configuration.getLogicalIOConfiguration());
+        new ParquetColumnPrefetchStore(configuration.getLogicalIOConfiguration());
     this.objectMetadataStore =
-            new MetadataStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration());
+        new MetadataStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration());
     this.objectFormatSelector = new ObjectFormatSelector(configuration.getLogicalIOConfiguration());
     if (configuration.getPhysicalIOConfiguration().isEnableTailMetadataCaching()) {
       this.cache =
-              new ValkeyCacheImpl(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
+          new ValkeyCacheImpl(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
       LOG.info("Cache successfully instantiated");
       LOG.info(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
 
@@ -90,8 +90,7 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
       this.cache = null;
     }
     this.objectBlobStore =
-            new BlobStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration(), cache);
-
+        new BlobStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration(), cache);
   }
 
   /**
@@ -104,7 +103,6 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
     return new S3SeekableInputStream(s3URI, createLogicalIO(s3URI), telemetry);
   }
 
-
   /**
    * This method is deprecated. Please use {@link #createStream(S3URI, OpenStreamInformation)}
    *
@@ -113,7 +111,7 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
    * @return An instance of the input stream.
    */
   public S3SeekableInputStream createStream(@NonNull S3URI s3URI, ObjectMetadata metadata)
-          throws IOException {
+      throws IOException {
     storeObjectMetadata(s3URI, metadata);
     return new S3SeekableInputStream(s3URI, createLogicalIO(s3URI), telemetry);
   }
@@ -127,11 +125,11 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
    * @throws IOException IoException
    */
   public S3SeekableInputStream createStream(
-          @NonNull S3URI s3URI, @NonNull OpenStreamInformation openStreamInformation)
-          throws IOException {
+      @NonNull S3URI s3URI, @NonNull OpenStreamInformation openStreamInformation)
+      throws IOException {
     storeObjectMetadata(s3URI, openStreamInformation.getObjectMetadata());
     return new S3SeekableInputStream(
-            s3URI, createLogicalIO(s3URI, openStreamInformation), telemetry);
+        s3URI, createLogicalIO(s3URI, openStreamInformation), telemetry);
   }
 
   LogicalIO createLogicalIO(S3URI s3URI) throws IOException {
@@ -139,43 +137,43 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
   }
 
   LogicalIO createLogicalIO(S3URI s3URI, OpenStreamInformation openStreamInformation)
-          throws IOException {
+      throws IOException {
     switch (objectFormatSelector.getObjectFormat(s3URI, openStreamInformation)) {
       case PARQUET:
         return new ParquetLogicalIOImpl(
+            s3URI,
+            new PhysicalIOImpl(
                 s3URI,
-                new PhysicalIOImpl(
-                        s3URI,
-                        objectMetadataStore,
-                        objectBlobStore,
-                        telemetry,
-                        openStreamInformation.getStreamContext()),
+                objectMetadataStore,
+                objectBlobStore,
                 telemetry,
-                configuration.getLogicalIOConfiguration(),
-                parquetColumnPrefetchStore);
+                openStreamInformation.getStreamContext()),
+            telemetry,
+            configuration.getLogicalIOConfiguration(),
+            parquetColumnPrefetchStore);
 
       case SEQUENTIAL:
         return new SequentialLogicalIOImpl(
+            s3URI,
+            new PhysicalIOImpl(
                 s3URI,
-                new PhysicalIOImpl(
-                        s3URI,
-                        objectMetadataStore,
-                        objectBlobStore,
-                        telemetry,
-                        openStreamInformation.getStreamContext()),
+                objectMetadataStore,
+                objectBlobStore,
                 telemetry,
-                configuration.getLogicalIOConfiguration());
+                openStreamInformation.getStreamContext()),
+            telemetry,
+            configuration.getLogicalIOConfiguration());
 
       default:
         return new DefaultLogicalIOImpl(
+            s3URI,
+            new PhysicalIOImpl(
                 s3URI,
-                new PhysicalIOImpl(
-                        s3URI,
-                        objectMetadataStore,
-                        objectBlobStore,
-                        telemetry,
-                        openStreamInformation.getStreamContext()),
-                telemetry);
+                objectMetadataStore,
+                objectBlobStore,
+                telemetry,
+                openStreamInformation.getStreamContext()),
+            telemetry);
     }
   }
 

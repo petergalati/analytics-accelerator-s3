@@ -31,9 +31,9 @@ import software.amazon.s3.analyticsaccelerator.util.ObjectKey;
 
 /** A BlobStore is a container for Blobs and functions as a data cache. */
 @SuppressFBWarnings(
-        value = "SIC_INNER_SHOULD_BE_STATIC_ANON",
-        justification =
-                "Inner class is created very infrequently, and fluency justifies the extra pointer")
+    value = "SIC_INNER_SHOULD_BE_STATIC_ANON",
+    justification =
+        "Inner class is created very infrequently, and fluency justifies the extra pointer")
 public class BlobStore implements Closeable {
   private final Map<ObjectKey, Blob> blobMap;
   private final ObjectClient objectClient;
@@ -49,20 +49,35 @@ public class BlobStore implements Closeable {
    * @param configuration the PhysicalIO configuration
    */
   public BlobStore(
-          @NonNull ObjectClient objectClient,
-          @NonNull Telemetry telemetry,
-          @NonNull PhysicalIOConfiguration configuration,
-          Cache cache) {
+      @NonNull ObjectClient objectClient,
+      @NonNull Telemetry telemetry,
+      @NonNull PhysicalIOConfiguration configuration) {
+    this(objectClient, telemetry, configuration, null);
+  }
+
+  /**
+   * Construct an instance of BlobStore with caching enabled.
+   *
+   * @param objectClient object client capable of interacting with the underlying object store
+   * @param telemetry an instance of {@link Telemetry} to use
+   * @param configuration the PhysicalIO configuration
+   * @param cache an instance of {@link Cache} to use
+   */
+  public BlobStore(
+      @NonNull ObjectClient objectClient,
+      @NonNull Telemetry telemetry,
+      @NonNull PhysicalIOConfiguration configuration,
+      Cache cache) {
     this.objectClient = objectClient;
     this.telemetry = telemetry;
     this.blobMap =
-            Collections.synchronizedMap(
-                    new LinkedHashMap<ObjectKey, Blob>() {
-                      @Override
-                      protected boolean removeEldestEntry(final Map.Entry<ObjectKey, Blob> eldest) {
-                        return this.size() > configuration.getBlobStoreCapacity();
-                      }
-                    });
+        Collections.synchronizedMap(
+            new LinkedHashMap<ObjectKey, Blob>() {
+              @Override
+              protected boolean removeEldestEntry(final Map.Entry<ObjectKey, Blob> eldest) {
+                return this.size() > configuration.getBlobStoreCapacity();
+              }
+            });
     this.configuration = configuration;
     this.cache = cache;
   }
@@ -77,14 +92,14 @@ public class BlobStore implements Closeable {
    */
   public Blob get(ObjectKey objectKey, ObjectMetadata metadata, StreamContext streamContext) {
     return blobMap.computeIfAbsent(
-            objectKey,
-            uri ->
-                    new Blob(
-                            uri,
-                            metadata,
-                            new BlockManager(
-                                    uri, objectClient, metadata, telemetry, configuration, cache, streamContext),
-                            telemetry));
+        objectKey,
+        uri ->
+            new Blob(
+                uri,
+                metadata,
+                new BlockManager(
+                    uri, objectClient, metadata, telemetry, configuration, cache, streamContext),
+                telemetry));
   }
 
   /**

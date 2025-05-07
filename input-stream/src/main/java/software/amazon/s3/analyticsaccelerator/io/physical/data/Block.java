@@ -19,6 +19,7 @@ import static software.amazon.s3.analyticsaccelerator.util.Constants.ONE_MB;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import lombok.Getter;
@@ -84,33 +85,31 @@ public class Block implements Closeable {
    * @param readRetryCount Number of retries for block read failure
    */
   public Block(
-          @NonNull ObjectKey objectKey,
-          @NonNull ObjectClient objectClient,
-          @NonNull Telemetry telemetry,
-          long start,
-          long end,
-          long generation,
-          @NonNull ReadMode readMode,
-          long readTimeout,
-          int readRetryCount,
-          long contentLength,
-          boolean enableTailMetadataCaching)
-          throws IOException {
+      @NonNull ObjectKey objectKey,
+      @NonNull ObjectClient objectClient,
+      @NonNull Telemetry telemetry,
+      long start,
+      long end,
+      long generation,
+      @NonNull ReadMode readMode,
+      long readTimeout,
+      int readRetryCount)
+      throws IOException {
 
     this(
-            objectKey,
-            objectClient,
-            telemetry,
-            start,
-            end,
-            generation,
-            readMode,
-            readTimeout,
-            readRetryCount,
-            contentLength,
-            enableTailMetadataCaching,
-            null,
-            null);
+        objectKey,
+        objectClient,
+        telemetry,
+        start,
+        end,
+        generation,
+        readMode,
+        readTimeout,
+        readRetryCount,
+        0,
+        false,
+        null,
+        null);
   }
 
   /**
@@ -125,34 +124,37 @@ public class Block implements Closeable {
    * @param readMode read mode describing whether this is a sync or async fetch
    * @param readTimeout Timeout duration (in milliseconds) for reading a block object from S3
    * @param readRetryCount Number of retries for block read failure
+   * @param contentLength Length of the parquet file
+   * @param enableTailMetadataCaching Boolean flag to enable or disable tail metadata caching
+   * @param cache an instance of {@link Cache} to use
    * @param streamContext contains audit headers to be attached in the request header
    */
   public Block(
-          @NonNull ObjectKey objectKey,
-          @NonNull ObjectClient objectClient,
-          @NonNull Telemetry telemetry,
-          long start,
-          long end,
-          long generation,
-          @NonNull ReadMode readMode,
-          long readTimeout,
-          int readRetryCount,
-          long contentLength,
-          boolean enableTailMetadataCaching,
-          Cache cache,
-          StreamContext streamContext)
-          throws IOException {
+      @NonNull ObjectKey objectKey,
+      @NonNull ObjectClient objectClient,
+      @NonNull Telemetry telemetry,
+      long start,
+      long end,
+      long generation,
+      @NonNull ReadMode readMode,
+      long readTimeout,
+      int readRetryCount,
+      long contentLength,
+      boolean enableTailMetadataCaching,
+      Cache cache,
+      StreamContext streamContext)
+      throws IOException {
 
     Preconditions.checkArgument(
-            0 <= generation, "`generation` must be non-negative; was: %s", generation);
+        0 <= generation, "`generation` must be non-negative; was: %s", generation);
     Preconditions.checkArgument(0 <= start, "`start` must be non-negative; was: %s", start);
     Preconditions.checkArgument(0 <= end, "`end` must be non-negative; was: %s", end);
     Preconditions.checkArgument(
-            start <= end, "`start` must be less than `end`; %s is not less than %s", start, end);
+        start <= end, "`start` must be less than `end`; %s is not less than %s", start, end);
     Preconditions.checkArgument(
-            0 < readTimeout, "`readTimeout` must be greater than 0; was %s", readTimeout);
+        0 < readTimeout, "`readTimeout` must be greater than 0; was %s", readTimeout);
     Preconditions.checkArgument(
-            0 < readRetryCount, "`readRetryCount` must be greater than 0; was %s", readRetryCount);
+        0 < readRetryCount, "`readRetryCount` must be greater than 0; was %s", readRetryCount);
 
     this.start = start;
     this.end = end;
@@ -168,7 +170,11 @@ public class Block implements Closeable {
     this.readRetryCount = readRetryCount;
     this.contentLength = contentLength;
     this.enableTailMetadataCaching = enableTailMetadataCaching;
-    Block.cache = enableTailMetadataCaching ? cache : null;
+
+    if (enableTailMetadataCaching && Block.cache == null && cache != null) {
+      Block.cache = cache;
+    }
+
     generateSourceAndData();
   }
 
@@ -182,106 +188,106 @@ public class Block implements Closeable {
 
           long cacheGetStartTime = System.nanoTime();
 
-          byte[] cachedData = Block.cache.get(cacheKey.getBytes());
+          byte[] cachedData = Block.cache.get(cacheKey.getBytes(StandardCharsets.UTF_8));
 
           long cacheGetDuration = System.nanoTime() - cacheGetStartTime;
           double cacheGetMsDuration = cacheGetDuration / 1_000_000.0;
 
           if (cachedData != null) {
-            LOG.info("Cache hit for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
-                    cacheKey,
-                    String.format("%.2f", cacheGetMsDuration),
-                    range.getStart(),
-                    range.getEnd());
+            LOG.info(
+                "Cache hit for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
+                cacheKey,
+                String.format("%.2f", cacheGetMsDuration),
+                range.getStart(),
+                range.getEnd());
 
             data = CompletableFuture.completedFuture(cachedData);
             return;
 
           } else {
-            LOG.info("Cache miss for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
-                    cacheKey,
-                    String.format("%.2f", cacheGetMsDuration),
-                    range.getStart(),
-                    range.getEnd());
+            LOG.info(
+                "Cache miss for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
+                cacheKey,
+                String.format("%.2f", cacheGetMsDuration),
+                range.getStart(),
+                range.getEnd());
           }
         }
 
         GetRequest getRequest =
-                GetRequest.builder()
-                        .s3Uri(this.objectKey.getS3URI())
-                        .range(this.range)
-                        .etag(this.objectKey.getEtag())
-                        .referrer(referrer)
-                        .build();
-
-
+            GetRequest.builder()
+                .s3Uri(this.objectKey.getS3URI())
+                .range(this.range)
+                .etag(this.objectKey.getEtag())
+                .referrer(referrer)
+                .build();
 
         this.source =
-                this.telemetry.measureCritical(
-                        () ->
-                                Operation.builder()
-                                        .name(OPERATION_BLOCK_GET_ASYNC)
-                                        .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
-                                        .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
-                                        .attribute(StreamAttributes.range(this.range))
-                                        .attribute(StreamAttributes.generation(generation))
-                                        .build(),
-                        objectClient.getObject(getRequest, streamContext));
-
+            this.telemetry.measureCritical(
+                () ->
+                    Operation.builder()
+                        .name(OPERATION_BLOCK_GET_ASYNC)
+                        .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
+                        .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
+                        .attribute(StreamAttributes.range(this.range))
+                        .attribute(StreamAttributes.generation(generation))
+                        .build(),
+                objectClient.getObject(getRequest, streamContext));
 
         // Handle IOExceptions when converting stream to byte array
         this.data =
-                this.source.thenApply(
-                        objectContent -> {
-                          try {
-                            long s3GetStartTime = System.nanoTime();
+            this.source.thenApply(
+                objectContent -> {
+                  try {
+                    long s3GetStartTime = System.nanoTime();
 
-                            byte[] fetchedData =
-                                    StreamUtils.toByteArray(
-                                            objectContent, this.objectKey, this.range, this.readTimeout);
+                    byte[] fetchedData =
+                        StreamUtils.toByteArray(
+                            objectContent, this.objectKey, this.range, this.readTimeout);
 
-                            long s3GetDuration = System.nanoTime() - s3GetStartTime;
-                            double s3GetMsDuration = s3GetDuration / 1_000_000.0;
+                    long s3GetDuration = System.nanoTime() - s3GetStartTime;
+                    double s3GetMsDuration = s3GetDuration / 1_000_000.0;
 
-                            LOG.info("S3 GET request for: {}. Request took: {}ms, start = {}, end = {}.",
-                                    this.objectKey.getS3URI(),
-                                    String.format("%.2f", s3GetMsDuration),
-                                    range.getStart(),
-                                    range.getEnd());
+                    LOG.info(
+                        "S3 GET request for: {}. Request took: {}ms, start = {}, end = {}.",
+                        this.objectKey.getS3URI(),
+                        String.format("%.2f", s3GetMsDuration),
+                        range.getStart(),
+                        range.getEnd());
 
+                    if (enableTailMetadataCaching && this.isTailMetadata() && Block.cache != null) {
+                      String cacheKey = generateCacheKey();
 
-                            if (enableTailMetadataCaching && this.isTailMetadata() && Block.cache != null) {
-                              String cacheKey = generateCacheKey();
+                      long cacheSetStartTime = System.nanoTime();
 
-                              long cacheSetStartTime = System.nanoTime();
+                      Block.cache.set(cacheKey.getBytes(StandardCharsets.UTF_8), fetchedData);
 
-                              Block.cache.set(generateCacheKey().getBytes(), fetchedData);
+                      long cacheSetDuration = System.nanoTime() - cacheSetStartTime;
+                      double cacheSetMsDuration = cacheSetDuration / 1_000_000.0;
 
-                              long cacheSetDuration = System.nanoTime() - cacheSetStartTime;
-                              double cacheSetMsDuration = cacheSetDuration / 1_000_000.0;
+                      LOG.info(
+                          "Cached tail metadata: {}. Cache set took: {}ms, start = {}, end = {}.",
+                          cacheKey,
+                          String.format("%.2f", cacheSetMsDuration),
+                          range.getStart(),
+                          range.getEnd());
+                    }
 
-                              LOG.info("Cached tail metadata: {}. Cache set took: {}ms, start = {}, end = {}.",
-                                      cacheKey,
-                                      String.format("%.2f", cacheSetMsDuration),
-                                      range.getStart(),
-                                      range.getEnd());
-                            }
-
-                            return fetchedData;
-                          } catch (IOException | TimeoutException e) {
-                            throw new RuntimeException(
-                                    "Error while converting InputStream to byte array", e);
-                          }
-                        });
+                    return fetchedData;
+                  } catch (IOException | TimeoutException e) {
+                    throw new RuntimeException(
+                        "Error while converting InputStream to byte array", e);
+                  }
+                });
 
         return; // Successfully generated source and data, exit loop
       } catch (RuntimeException e) {
         retries++;
         LOG.debug(
-                "Retry {}/{} - Failed to fetch block data due to: {}",
-                retries,
-                this.readRetryCount,
-                e.getMessage());
+            "Retry {}/{} - Failed to fetch block data due to: {}",
+            retries,
+            this.readRetryCount,
+            e.getMessage());
 
         if (retries >= this.readRetryCount) {
           LOG.error("Max retries reached. Unable to fetch block data.");
@@ -392,16 +398,16 @@ public class Block implements Closeable {
    */
   private byte[] getData() throws IOException {
     return this.telemetry.measureJoinCritical(
-            () ->
-                    Operation.builder()
-                            .name(OPERATION_BLOCK_GET_JOIN)
-                            .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
-                            .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
-                            .attribute(StreamAttributes.range(this.range))
-                            .attribute(StreamAttributes.rangeLength(this.range.getLength()))
-                            .build(),
-            this.data,
-            this.readTimeout);
+        () ->
+            Operation.builder()
+                .name(OPERATION_BLOCK_GET_JOIN)
+                .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
+                .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
+                .attribute(StreamAttributes.range(this.range))
+                .attribute(StreamAttributes.rangeLength(this.range.getLength()))
+                .build(),
+        this.data,
+        this.readTimeout);
   }
 
   /** Closes the {@link Block} and frees up all resources it holds */

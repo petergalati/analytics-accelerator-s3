@@ -18,22 +18,22 @@ package software.amazon.s3.analyticsaccelerator.io.physical;
 /** An interface defining how the ElastiCache cache should behave */
 public interface Cache {
 
-    /**
-     * Fetches the value from ElastiCache given a key
-     *
-     * @param key the key to fetch from ElastiCache
-     * @return the value associated with the key in ElastiCache
-     */
-    byte[] get(byte[] key);
+  /**
+   * Fetches the value from ElastiCache given a key
+   *
+   * @param key the key to fetch from ElastiCache
+   * @return the value associated with the key in ElastiCache
+   */
+  byte[] get(byte[] key);
 
-    /**
-     * Sets the value in ElastiCache for a key, given that key and value
-     *
-     * @param key the key for which to set the value in ElastiCache
-     * @param value the value to set in ElastiCache for the given key
-     */
-    void set(byte[] key, byte[] value);
+  /**
+   * Sets the value in ElastiCache for a key, given that key and value
+   *
+   * @param key the key for which to set the value in ElastiCache
+   * @param value the value to set in ElastiCache for the given key
+   */
+  void set(byte[] key, byte[] value);
 
-    /** Closes the connection to the ElastiCache server */
-    void close();
+  /** Closes the connection to the ElastiCache server */
+  void close();
 }

@@ -63,11 +63,11 @@ public class BlockManager implements Closeable {
    * @param configuration the physicalIO configuration
    */
   public BlockManager(
-          @NonNull ObjectKey objectKey,
-          @NonNull ObjectClient objectClient,
-          @NonNull ObjectMetadata metadata,
-          @NonNull Telemetry telemetry,
-          @NonNull PhysicalIOConfiguration configuration) {
+      @NonNull ObjectKey objectKey,
+      @NonNull ObjectClient objectClient,
+      @NonNull ObjectMetadata metadata,
+      @NonNull Telemetry telemetry,
+      @NonNull PhysicalIOConfiguration configuration) {
     this(objectKey, objectClient, metadata, telemetry, configuration, null, null);
   }
 
@@ -80,15 +80,16 @@ public class BlockManager implements Closeable {
    * @param metadata the metadata for the object
    * @param configuration the physicalIO configuration
    * @param streamContext contains audit headers to be attached in the request header
+   * @param cache an instance of {@link Cache} to use
    */
   public BlockManager(
-          @NonNull ObjectKey objectKey,
-          @NonNull ObjectClient objectClient,
-          @NonNull ObjectMetadata metadata,
-          @NonNull Telemetry telemetry,
-          @NonNull PhysicalIOConfiguration configuration,
-          Cache cache,
-          StreamContext streamContext) {
+      @NonNull ObjectKey objectKey,
+      @NonNull ObjectClient objectClient,
+      @NonNull ObjectMetadata metadata,
+      @NonNull Telemetry telemetry,
+      @NonNull PhysicalIOConfiguration configuration,
+      Cache cache,
+      StreamContext streamContext) {
     this.objectKey = objectKey;
     this.objectClient = objectClient;
     this.metadata = metadata;
@@ -157,7 +158,7 @@ public class BlockManager implements Closeable {
    * @throws IOException if an I/O error occurs
    */
   public synchronized void makeRangeAvailable(long pos, long len, ReadMode readMode)
-          throws IOException {
+      throws IOException {
     Preconditions.checkArgument(0 <= pos, "`pos` must not be negative");
     Preconditions.checkArgument(0 <= len, "`len` must not be negative");
 
@@ -177,9 +178,9 @@ public class BlockManager implements Closeable {
     if (readMode != ReadMode.ASYNC && patternDetector.isSequentialRead(pos)) {
       generation = patternDetector.getGeneration(pos);
       effectiveEnd =
-              Math.max(
-                      effectiveEnd,
-                      truncatePos(pos + sequentialReadProgression.getSizeForGeneration(generation)));
+          Math.max(
+              effectiveEnd,
+              truncatePos(pos + sequentialReadProgression.getSizeForGeneration(generation)));
     } else {
       generation = 0;
     }
@@ -187,39 +188,39 @@ public class BlockManager implements Closeable {
     // Fix "effectiveEnd", so we can pass it into the lambda
     final long effectiveEndFinal = effectiveEnd;
     this.telemetry.measureStandard(
-            () ->
-                    Operation.builder()
-                            .name(OPERATION_MAKE_RANGE_AVAILABLE)
-                            .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
-                            .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
-                            .attribute(StreamAttributes.range(pos, pos + len - 1))
-                            .attribute(StreamAttributes.effectiveRange(pos, effectiveEndFinal))
-                            .attribute(StreamAttributes.generation(generation))
-                            .build(),
-            () -> {
-              // Determine the missing ranges and fetch them
-              List<Range> missingRanges =
-                      ioPlanner.planRead(pos, effectiveEndFinal, getLastObjectByte());
-              List<Range> splits = rangeOptimiser.splitRanges(missingRanges);
-              for (Range r : splits) {
-                Block block =
-                        new Block(
-                                objectKey,
-                                objectClient,
-                                telemetry,
-                                r.getStart(),
-                                r.getEnd(),
-                                generation,
-                                readMode,
-                                this.configuration.getBlockReadTimeout(),
-                                this.configuration.getBlockReadRetryCount(),
-                                metadata.getContentLength(),
-                                this.configuration.isEnableTailMetadataCaching(),
-                                cache,
-                                streamContext);
-                blockStore.add(block);
-              }
-            });
+        () ->
+            Operation.builder()
+                .name(OPERATION_MAKE_RANGE_AVAILABLE)
+                .attribute(StreamAttributes.uri(this.objectKey.getS3URI()))
+                .attribute(StreamAttributes.etag(this.objectKey.getEtag()))
+                .attribute(StreamAttributes.range(pos, pos + len - 1))
+                .attribute(StreamAttributes.effectiveRange(pos, effectiveEndFinal))
+                .attribute(StreamAttributes.generation(generation))
+                .build(),
+        () -> {
+          // Determine the missing ranges and fetch them
+          List<Range> missingRanges =
+              ioPlanner.planRead(pos, effectiveEndFinal, getLastObjectByte());
+          List<Range> splits = rangeOptimiser.splitRanges(missingRanges);
+          for (Range r : splits) {
+            Block block =
+                new Block(
+                    objectKey,
+                    objectClient,
+                    telemetry,
+                    r.getStart(),
+                    r.getEnd(),
+                    generation,
+                    readMode,
+                    this.configuration.getBlockReadTimeout(),
+                    this.configuration.getBlockReadRetryCount(),
+                    metadata.getContentLength(),
+                    this.configuration.isEnableTailMetadataCaching(),
+                    cache,
+                    streamContext);
+            blockStore.add(block);
+          }
+        });
   }
 
   private long getLastObjectByte() {

@@ -41,8 +41,8 @@ public class PhysicalIOConfiguration {
   private static final double DEFAULT_SEQUENTIAL_PREFETCH_SPEED = 1.0;
   private static final long DEFAULT_BLOCK_READ_TIMEOUT = 30_000;
   private static final int DEFAULT_BLOCK_READ_RETRY_COUNT = 20;
-  private static final boolean DEFAULT_ENABLE_TAIL_METADATA_CACHING = true;
-//  TODO: find a way to pass the cache endpoint down without hardcoding
+  private static final boolean DEFAULT_ENABLE_TAIL_METADATA_CACHING = false;
+  //  TODO: find a way to pass the cache endpoint down without hardcoding
   private static final String DEFAULT_CACHE_ENDPOINT = "";
 
   /** Capacity, in blobs. {@link PhysicalIOConfiguration#DEFAULT_CAPACITY_BLOB_STORE} by default. */
@@ -129,27 +129,27 @@ public class PhysicalIOConfiguration {
    */
   public static PhysicalIOConfiguration fromConfiguration(ConnectorConfiguration configuration) {
     return PhysicalIOConfiguration.builder()
-            .blobStoreCapacity(
-                    configuration.getInt(BLOB_STORE_CAPACITY_KEY, DEFAULT_CAPACITY_BLOB_STORE))
-            .metadataStoreCapacity(
-                    configuration.getInt(METADATA_STORE_CAPACITY_KEY, DEFAULT_CAPACITY_METADATA_STORE))
-            .blockSizeBytes(configuration.getLong(BLOCK_SIZE_BYTES_KEY, DEFAULT_BLOCK_SIZE_BYTES))
-            .readAheadBytes(configuration.getLong(READ_AHEAD_BYTES_KEY, DEFAULT_READ_AHEAD_BYTES))
-            .maxRangeSizeBytes(configuration.getLong(MAX_RANGE_SIZE_BYTES_KEY, DEFAULT_MAX_RANGE_SIZE))
-            .partSizeBytes(configuration.getLong(PART_SIZE_BYTES_KEY, DEFAULT_PART_SIZE))
-            .sequentialPrefetchBase(
-                    configuration.getDouble(SEQUENTIAL_PREFETCH_BASE_KEY, DEFAULT_SEQUENTIAL_PREFETCH_BASE))
-            .sequentialPrefetchSpeed(
-                    configuration.getDouble(
-                            SEQUENTIAL_PREFETCH_SPEED_KEY, DEFAULT_SEQUENTIAL_PREFETCH_SPEED))
-            .blockReadTimeout(configuration.getLong(BLOCK_READ_TIMEOUT_KEY, DEFAULT_BLOCK_READ_TIMEOUT))
-            .blockReadRetryCount(
-                    configuration.getInt(BLOCK_READ_RETRY_COUNT_KEY, DEFAULT_BLOCK_READ_RETRY_COUNT))
-            .enableTailMetadataCaching(
-                    configuration.getBoolean(
-                            ENABLE_TAIL_METADATA_CACHING_KEY, DEFAULT_ENABLE_TAIL_METADATA_CACHING))
-            .cacheEndpoint(configuration.getString(CACHE_ENDPOINT_KEY, DEFAULT_CACHE_ENDPOINT))
-            .build();
+        .blobStoreCapacity(
+            configuration.getInt(BLOB_STORE_CAPACITY_KEY, DEFAULT_CAPACITY_BLOB_STORE))
+        .metadataStoreCapacity(
+            configuration.getInt(METADATA_STORE_CAPACITY_KEY, DEFAULT_CAPACITY_METADATA_STORE))
+        .blockSizeBytes(configuration.getLong(BLOCK_SIZE_BYTES_KEY, DEFAULT_BLOCK_SIZE_BYTES))
+        .readAheadBytes(configuration.getLong(READ_AHEAD_BYTES_KEY, DEFAULT_READ_AHEAD_BYTES))
+        .maxRangeSizeBytes(configuration.getLong(MAX_RANGE_SIZE_BYTES_KEY, DEFAULT_MAX_RANGE_SIZE))
+        .partSizeBytes(configuration.getLong(PART_SIZE_BYTES_KEY, DEFAULT_PART_SIZE))
+        .sequentialPrefetchBase(
+            configuration.getDouble(SEQUENTIAL_PREFETCH_BASE_KEY, DEFAULT_SEQUENTIAL_PREFETCH_BASE))
+        .sequentialPrefetchSpeed(
+            configuration.getDouble(
+                SEQUENTIAL_PREFETCH_SPEED_KEY, DEFAULT_SEQUENTIAL_PREFETCH_SPEED))
+        .blockReadTimeout(configuration.getLong(BLOCK_READ_TIMEOUT_KEY, DEFAULT_BLOCK_READ_TIMEOUT))
+        .blockReadRetryCount(
+            configuration.getInt(BLOCK_READ_RETRY_COUNT_KEY, DEFAULT_BLOCK_READ_RETRY_COUNT))
+        .enableTailMetadataCaching(
+            configuration.getBoolean(
+                ENABLE_TAIL_METADATA_CACHING_KEY, DEFAULT_ENABLE_TAIL_METADATA_CACHING))
+        .cacheEndpoint(configuration.getString(CACHE_ENDPOINT_KEY, DEFAULT_CACHE_ENDPOINT))
+        .build();
   }
 
   /**
@@ -167,39 +167,41 @@ public class PhysicalIOConfiguration {
    *     prefetched physical blocks.
    * @param blockReadTimeout Timeout duration (in milliseconds) for reading a block object from S3
    * @param blockReadRetryCount Number of retries for block read failure
+   * @param enableTailMetadataCaching Boolean flag to enable or disable tail metadata caching
+   * @param cacheEndpoint The endpoint of the ElastiCache cache in use
    */
   @Builder
   private PhysicalIOConfiguration(
-          int blobStoreCapacity,
-          int metadataStoreCapacity,
-          long blockSizeBytes,
-          long readAheadBytes,
-          long maxRangeSizeBytes,
-          long partSizeBytes,
-          double sequentialPrefetchBase,
-          double sequentialPrefetchSpeed,
-          long blockReadTimeout,
-          int blockReadRetryCount,
-          boolean enableTailMetadataCaching,
-          String cacheEndpoint) {
+      int blobStoreCapacity,
+      int metadataStoreCapacity,
+      long blockSizeBytes,
+      long readAheadBytes,
+      long maxRangeSizeBytes,
+      long partSizeBytes,
+      double sequentialPrefetchBase,
+      double sequentialPrefetchSpeed,
+      long blockReadTimeout,
+      int blockReadRetryCount,
+      boolean enableTailMetadataCaching,
+      String cacheEndpoint) {
     Preconditions.checkArgument(blobStoreCapacity > 0, "`blobStoreCapacity` must be positive");
     Preconditions.checkArgument(
-            metadataStoreCapacity > 0, "`metadataStoreCapacity` must be positive");
+        metadataStoreCapacity > 0, "`metadataStoreCapacity` must be positive");
     Preconditions.checkArgument(blockSizeBytes > 0, "`blockSizeBytes` must be positive");
     Preconditions.checkArgument(readAheadBytes > 0, "`readAheadLengthBytes` must be positive");
     Preconditions.checkArgument(maxRangeSizeBytes > 0, "`maxRangeSize` must be positive");
     Preconditions.checkArgument(partSizeBytes > 0, "`partSize` must be positive");
     Preconditions.checkArgument(
-            sequentialPrefetchBase > 0, "`sequentialPrefetchBase` must be positive");
+        sequentialPrefetchBase > 0, "`sequentialPrefetchBase` must be positive");
     Preconditions.checkArgument(
-            sequentialPrefetchSpeed > 0, "`sequentialPrefetchSpeed` must be positive");
+        sequentialPrefetchSpeed > 0, "`sequentialPrefetchSpeed` must be positive");
     Preconditions.checkArgument(blockReadTimeout > 0, "`blockReadTimeout` must be positive");
     Preconditions.checkArgument(blockReadRetryCount > 0, "`blockReadRetryCount` must be positive");
 
     if (enableTailMetadataCaching) {
       Preconditions.checkArgument(
-              cacheEndpoint != null && !cacheEndpoint.isEmpty(),
-              "`cacheEndpoint` must be set when tail metadata caching is enabled");
+          cacheEndpoint != null && !cacheEndpoint.isEmpty(),
+          "`cacheEndpoint` must be set when tail metadata caching is enabled");
     }
 
     this.blobStoreCapacity = blobStoreCapacity;
