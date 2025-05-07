@@ -117,7 +117,9 @@ public abstract class TelemetryDatapoint {
       return buildCore();
     }
 
-    /** @return new instance of whatever this builder builds */
+    /**
+     * @return new instance of whatever this builder builds
+     */
     protected abstract T buildCore();
   }
 }
