@@ -34,6 +34,11 @@ public class ValkeyCacheImpl implements Cache {
      */
     public ValkeyCacheImpl(String endpoint) {
 
+        ConnectionPoolConfig config = new ConnectionPoolConfig();
+        config.setMaxTotal(64);
+        config.setMaxIdle(64);
+        config.setMinIdle(32);
+
         JedisClientConfig clientConfig = DefaultJedisClientConfig.builder().ssl(true).build();
         this.max_attempts = 5;
         this.jedisCluster =
@@ -41,8 +46,8 @@ public class ValkeyCacheImpl implements Cache {
                         new HostAndPort(endpoint, 6379),
                         clientConfig,
                         max_attempts,
-                        new ConnectionPoolConfig());
-
+                        config
+                );
     }
 
     /**

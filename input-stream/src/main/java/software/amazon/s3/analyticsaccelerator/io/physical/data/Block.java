@@ -178,16 +178,31 @@ public class Block implements Closeable {
     while (retries < readRetryCount) {
       try {
         if (enableTailMetadataCaching && isTailMetadata() && cache != null) {
-          String cacheKey = this.generateCacheKey();
+          String cacheKey = generateCacheKey();
+
+          long cacheGetStartTime = System.nanoTime();
+
           byte[] cachedData = Block.cache.get(cacheKey.getBytes());
 
+          long cacheGetDuration = System.nanoTime() - cacheGetStartTime;
+          double cacheGetMsDuration = cacheGetDuration / 1_000_000.0;
+
           if (cachedData != null) {
+            LOG.info("Cache hit for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
+                    cacheKey,
+                    String.format("%.2f", cacheGetMsDuration),
+                    range.getStart(),
+                    range.getEnd());
+
             data = CompletableFuture.completedFuture(cachedData);
-            LOG.debug("Cache hit for tail metadata: {}", cacheKey);
             return;
 
           } else {
-            LOG.debug("Cache miss for tail metadata: {}", cacheKey);
+            LOG.info("Cache miss for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
+                    cacheKey,
+                    String.format("%.2f", cacheGetMsDuration),
+                    range.getStart(),
+                    range.getEnd());
           }
         }
 
@@ -198,6 +213,8 @@ public class Block implements Closeable {
                         .etag(this.objectKey.getEtag())
                         .referrer(referrer)
                         .build();
+
+
 
         this.source =
                 this.telemetry.measureCritical(
@@ -211,18 +228,43 @@ public class Block implements Closeable {
                                         .build(),
                         objectClient.getObject(getRequest, streamContext));
 
+
         // Handle IOExceptions when converting stream to byte array
         this.data =
                 this.source.thenApply(
                         objectContent -> {
                           try {
+                            long s3GetStartTime = System.nanoTime();
+
                             byte[] fetchedData =
                                     StreamUtils.toByteArray(
                                             objectContent, this.objectKey, this.range, this.readTimeout);
 
+                            long s3GetDuration = System.nanoTime() - s3GetStartTime;
+                            double s3GetMsDuration = s3GetDuration / 1_000_000.0;
+
+                            LOG.info("S3 GET request for: {}. Request took: {}ms, start = {}, end = {}.",
+                                    this.objectKey.getS3URI(),
+                                    String.format("%.2f", s3GetMsDuration),
+                                    range.getStart(),
+                                    range.getEnd());
+
+
                             if (enableTailMetadataCaching && this.isTailMetadata() && Block.cache != null) {
+                              String cacheKey = generateCacheKey();
+
+                              long cacheSetStartTime = System.nanoTime();
+
                               Block.cache.set(generateCacheKey().getBytes(), fetchedData);
-                              LOG.debug("Cached tail metadata: {}", generateCacheKey());
+
+                              long cacheSetDuration = System.nanoTime() - cacheSetStartTime;
+                              double cacheSetMsDuration = cacheSetDuration / 1_000_000.0;
+
+                              LOG.info("Cached tail metadata: {}. Cache set took: {}ms, start = {}, end = {}.",
+                                      cacheKey,
+                                      String.format("%.2f", cacheSetMsDuration),
+                                      range.getStart(),
+                                      range.getEnd());
                             }
 
                             return fetchedData;
