@@ -403,6 +403,4 @@ public class BlockTest {
 
     verify(mockCache).set(any(), any());
   }
-
-
 }
