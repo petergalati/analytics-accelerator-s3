@@ -45,7 +45,6 @@ public class ValkeyCacheImplTest {
     assertThrows(JedisException.class, () -> new ValkeyCacheImpl(TEST_ENDPOINT));
   }
 
-
   @Test
   void testGetSuccessful() {
     JedisCluster mockCluster = mock(JedisCluster.class);

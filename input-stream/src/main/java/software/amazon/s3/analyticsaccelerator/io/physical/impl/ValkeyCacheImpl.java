@@ -60,8 +60,6 @@ public class ValkeyCacheImpl implements Cache {
     this.jedisCluster = jedisCluster;
   }
 
-
-
   /**
    * Fetches the value from the Valkey ElastiCache given a key
    *
