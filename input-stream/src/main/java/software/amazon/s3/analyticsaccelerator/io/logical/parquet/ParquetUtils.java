@@ -88,7 +88,8 @@ public final class ParquetUtils {
           ranges.add(
               new Range(
                   fileMetadataStartIndex - footerPrefetchSize.getPageIndexPrefetchSize(),
-                  fileMetadataStartIndex - 1));
+                  fileMetadataStartIndex - 1,
+                  RangeType.Footer));
         }
 
         return ranges;
