@@ -15,7 +15,10 @@
  */
 package software.amazon.s3.analyticsaccelerator.io.physical;
 
-/** An interface defining how the ElastiCache cache should behave */
+/**
+ * A Cache interface defining how the ElastiCache cache should behave, to be used in a shared cache
+ * that may be accessed by any node for the duration of a workload
+ */
 public interface Cache {
 
   /**
@@ -24,7 +27,7 @@ public interface Cache {
    * @param key the key to fetch from ElastiCache
    * @return the value associated with the key in ElastiCache
    */
-  byte[] get(byte[] key);
+  byte[] get(String key);
 
   /**
    * Sets the value in ElastiCache for a key, given that key and value
@@ -32,7 +35,7 @@ public interface Cache {
    * @param key the key for which to set the value in ElastiCache
    * @param value the value to set in ElastiCache for the given key
    */
-  void set(byte[] key, byte[] value);
+  void set(String key, byte[] value);
 
   /** Closes the connection to the ElastiCache server */
   void close();

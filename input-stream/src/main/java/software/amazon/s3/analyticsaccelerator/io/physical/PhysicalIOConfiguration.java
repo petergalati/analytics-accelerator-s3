@@ -42,7 +42,6 @@ public class PhysicalIOConfiguration {
   private static final long DEFAULT_BLOCK_READ_TIMEOUT = 30_000;
   private static final int DEFAULT_BLOCK_READ_RETRY_COUNT = 20;
   private static final boolean DEFAULT_ENABLE_TAIL_METADATA_CACHING = false;
-  //  TODO: find a way to pass the cache endpoint down without hardcoding
   private static final String DEFAULT_CACHE_ENDPOINT = "";
 
   /** Capacity, in blobs. {@link PhysicalIOConfiguration#DEFAULT_CAPACITY_BLOB_STORE} by default. */

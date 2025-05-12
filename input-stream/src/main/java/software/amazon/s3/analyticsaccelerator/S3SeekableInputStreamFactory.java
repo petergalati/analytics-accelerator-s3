@@ -193,8 +193,8 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
     this.objectMetadataStore.close();
     this.objectBlobStore.close();
     this.telemetry.close();
-    if (cache instanceof ValkeyCacheImpl) {
-      ((ValkeyCacheImpl) cache).close();
+    if (cache != null) {
+      cache.close();
     }
   }
 }

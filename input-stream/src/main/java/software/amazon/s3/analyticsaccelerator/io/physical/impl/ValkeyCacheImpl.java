@@ -20,30 +20,47 @@ import io.valkey.DefaultJedisClientConfig;
 import io.valkey.HostAndPort;
 import io.valkey.JedisClientConfig;
 import io.valkey.JedisCluster;
+import io.valkey.exceptions.JedisException;
+import java.nio.charset.StandardCharsets;
+import lombok.NonNull;
 import software.amazon.s3.analyticsaccelerator.io.physical.Cache;
 
 /** A Valkey implementation of the Cache frontend */
 public class ValkeyCacheImpl implements Cache {
+  private static final int MAX_ATTEMPTS = 5;
+  private static final int MAX_POOL_CONNECTIONS = 32;
+  private static final int MIN_IDLE_POOL_CONNECTIONS = 16;
+
   private final JedisCluster jedisCluster;
-  private final int max_attempts;
 
   /**
    * Construct a new instance of ValkeyCacheImpl.
    *
    * @param endpoint the ElastiCache endpoint of the serverless Valkey cache
    */
-  public ValkeyCacheImpl(String endpoint) {
+  public ValkeyCacheImpl(@NonNull String endpoint) throws JedisException {
 
     ConnectionPoolConfig config = new ConnectionPoolConfig();
-    config.setMaxTotal(64);
-    config.setMaxIdle(64);
-    config.setMinIdle(32);
+    config.setMaxTotal(MAX_POOL_CONNECTIONS);
+    config.setMaxIdle(MAX_POOL_CONNECTIONS);
+    config.setMinIdle(MIN_IDLE_POOL_CONNECTIONS);
 
     JedisClientConfig clientConfig = DefaultJedisClientConfig.builder().ssl(true).build();
-    this.max_attempts = 5;
     this.jedisCluster =
-        new JedisCluster(new HostAndPort(endpoint, 6379), clientConfig, max_attempts, config);
+        new JedisCluster(new HostAndPort(endpoint, 6379), clientConfig, MAX_ATTEMPTS, config);
   }
+
+  /**
+   * Construct a new instance of ValkeyCacheImpl for testing purposes that accepts pre-configured
+   * JedisCluster.
+   *
+   * @param jedisCluster the JedisCluster (mock) instance to use.
+   */
+  public ValkeyCacheImpl(@NonNull JedisCluster jedisCluster) {
+    this.jedisCluster = jedisCluster;
+  }
+
+
 
   /**
    * Fetches the value from the Valkey ElastiCache given a key
@@ -52,8 +69,8 @@ public class ValkeyCacheImpl implements Cache {
    * @return the value associated with the key in the Valkey ElastiCache
    */
   @Override
-  public byte[] get(byte[] key) {
-    return jedisCluster.get(key);
+  public byte[] get(String key) {
+    return jedisCluster.get(key.getBytes(StandardCharsets.UTF_8));
   }
 
   /**
@@ -63,8 +80,8 @@ public class ValkeyCacheImpl implements Cache {
    * @param value the value to set in the Valkey ElastiCache for the given key
    */
   @Override
-  public void set(byte[] key, byte[] value) {
-    jedisCluster.set(key, value);
+  public void set(String key, byte[] value) {
+    jedisCluster.set(key.getBytes(StandardCharsets.UTF_8), value);
   }
 
   /** Closes the connection to the Valkey ElastiCache server */

@@ -19,7 +19,6 @@ import static software.amazon.s3.analyticsaccelerator.util.Constants.ONE_MB;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import lombok.Getter;
@@ -188,7 +187,7 @@ public class Block implements Closeable {
 
           long cacheGetStartTime = System.nanoTime();
 
-          byte[] cachedData = Block.cache.get(cacheKey.getBytes(StandardCharsets.UTF_8));
+          byte[] cachedData = Block.cache.get(cacheKey);
 
           long cacheGetDuration = System.nanoTime() - cacheGetStartTime;
           double cacheGetMsDuration = cacheGetDuration / 1_000_000.0;
@@ -260,7 +259,7 @@ public class Block implements Closeable {
 
                       long cacheSetStartTime = System.nanoTime();
 
-                      Block.cache.set(cacheKey.getBytes(StandardCharsets.UTF_8), fetchedData);
+                      Block.cache.set(cacheKey, fetchedData);
 
                       long cacheSetDuration = System.nanoTime() - cacheSetStartTime;
                       double cacheSetMsDuration = cacheSetDuration / 1_000_000.0;
@@ -435,5 +434,9 @@ public class Block implements Closeable {
    */
   private String generateCacheKey() {
     return objectKey.getS3URI() + "#" + objectKey.getEtag() + "#" + range;
+  }
+
+  static void resetCacheForTesting() {
+    cache = null;
   }
 }
