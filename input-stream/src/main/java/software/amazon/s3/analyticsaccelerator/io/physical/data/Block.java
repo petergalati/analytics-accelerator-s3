@@ -15,8 +15,6 @@
  */
 package software.amazon.s3.analyticsaccelerator.io.physical.data;
 
-import static software.amazon.s3.analyticsaccelerator.util.Constants.ONE_MB;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -38,6 +36,7 @@ import software.amazon.s3.analyticsaccelerator.request.ReadMode;
 import software.amazon.s3.analyticsaccelerator.request.Referrer;
 import software.amazon.s3.analyticsaccelerator.request.StreamContext;
 import software.amazon.s3.analyticsaccelerator.util.ObjectKey;
+import software.amazon.s3.analyticsaccelerator.util.RangeType;
 import software.amazon.s3.analyticsaccelerator.util.StreamAttributes;
 import software.amazon.s3.analyticsaccelerator.util.StreamUtils;
 
@@ -182,7 +181,9 @@ public class Block implements Closeable {
     int retries = 0;
     while (retries < readRetryCount) {
       try {
-        if (enableTailMetadataCaching && isTailMetadata() && cache != null) {
+        if (enableTailMetadataCaching
+            && range.getRangeType() == RangeType.Footer
+            && cache != null) {
           String cacheKey = generateCacheKey();
 
           long cacheGetStartTime = System.nanoTime();
@@ -254,7 +255,9 @@ public class Block implements Closeable {
                         range.getStart(),
                         range.getEnd());
 
-                    if (enableTailMetadataCaching && this.isTailMetadata() && Block.cache != null) {
+                    if (enableTailMetadataCaching
+                        && range.getRangeType() == RangeType.Footer
+                        && Block.cache != null) {
                       String cacheKey = generateCacheKey();
 
                       long cacheSetStartTime = System.nanoTime();
@@ -414,17 +417,6 @@ public class Block implements Closeable {
   public void close() {
     // Only the source needs to be canceled, the continuation will cancel on its own
     this.source.cancel(false);
-  }
-
-  /**
-   * Checks if the current block is a tail block.
-   *
-   * @return true if the current block is a tail block, false otherwise
-   */
-  private boolean isTailMetadata() {
-    /** hardcoded right now such that ONE_MB matches DEFAULT_PREFETCH_LARGE_FILE_METADATA_SIZE */
-    //    TODO: find a way to adjust this dynamically instead of just using ONE_MB (if necessary)
-    return start + 8 * ONE_MB + 8 * ONE_MB >= contentLength;
   }
 
   /**
