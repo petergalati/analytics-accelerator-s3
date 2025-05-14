@@ -34,6 +34,7 @@ import software.amazon.s3.analyticsaccelerator.request.Range;
 import software.amazon.s3.analyticsaccelerator.request.ReadMode;
 import software.amazon.s3.analyticsaccelerator.request.StreamContext;
 import software.amazon.s3.analyticsaccelerator.util.ObjectKey;
+import software.amazon.s3.analyticsaccelerator.util.RangeType;
 import software.amazon.s3.analyticsaccelerator.util.StreamAttributes;
 
 /** Implements a Block Manager responsible for planning and scheduling reads on a key. */
@@ -129,7 +130,7 @@ public class BlockManager implements Closeable {
       return;
     }
 
-    makeRangeAvailable(pos, 1, readMode);
+    makeRangeAvailable(pos, 1, null, readMode);
   }
 
   private boolean isRangeAvailable(long pos, long len) throws IOException {
@@ -157,8 +158,8 @@ public class BlockManager implements Closeable {
    * @param readMode whether this ask corresponds to a sync or async read
    * @throws IOException if an I/O error occurs
    */
-  public synchronized void makeRangeAvailable(long pos, long len, ReadMode readMode)
-      throws IOException {
+  public synchronized void makeRangeAvailable(
+      long pos, long len, RangeType rangeType, ReadMode readMode) throws IOException {
     Preconditions.checkArgument(0 <= pos, "`pos` must not be negative");
     Preconditions.checkArgument(0 <= len, "`len` must not be negative");
 
@@ -200,7 +201,7 @@ public class BlockManager implements Closeable {
         () -> {
           // Determine the missing ranges and fetch them
           List<Range> missingRanges =
-              ioPlanner.planRead(pos, effectiveEndFinal, getLastObjectByte());
+              ioPlanner.planRead(pos, effectiveEndFinal, rangeType, getLastObjectByte());
           List<Range> splits = rangeOptimiser.splitRanges(missingRanges);
           for (Range r : splits) {
             Block block =
