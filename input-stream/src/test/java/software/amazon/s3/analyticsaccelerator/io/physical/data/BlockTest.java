@@ -27,10 +27,7 @@ import software.amazon.s3.analyticsaccelerator.TestTelemetry;
 import software.amazon.s3.analyticsaccelerator.io.physical.Cache;
 import software.amazon.s3.analyticsaccelerator.request.ObjectClient;
 import software.amazon.s3.analyticsaccelerator.request.ReadMode;
-import software.amazon.s3.analyticsaccelerator.util.FakeObjectClient;
-import software.amazon.s3.analyticsaccelerator.util.FakeStuckObjectClient;
-import software.amazon.s3.analyticsaccelerator.util.ObjectKey;
-import software.amazon.s3.analyticsaccelerator.util.S3URI;
+import software.amazon.s3.analyticsaccelerator.util.*;
 
 @SuppressFBWarnings(
     value = "NP_NONNULL_PARAM_VIOLATION",
@@ -352,6 +349,7 @@ public class BlockTest {
             TestTelemetry.DEFAULT,
             0,
             TEST_DATA.length(),
+            RangeType.FOOTER_METADATA,
             0,
             ReadMode.SYNC,
             DEFAULT_READ_TIMEOUT,
@@ -389,6 +387,7 @@ public class BlockTest {
             TestTelemetry.DEFAULT,
             0,
             TEST_DATA.length(),
+            RangeType.FOOTER_METADATA,
             0,
             ReadMode.SYNC,
             DEFAULT_READ_TIMEOUT,
@@ -423,6 +422,7 @@ public class BlockTest {
             TestTelemetry.DEFAULT,
             0,
             TEST_DATA.length(),
+            RangeType.FOOTER_METADATA,
             0,
             ReadMode.SYNC,
             DEFAULT_READ_TIMEOUT,
@@ -442,6 +442,40 @@ public class BlockTest {
   }
 
   @Test
+  void testBlockRangeTypeNoCaching() throws IOException {
+    Block.resetCacheForTesting();
+
+    final String TEST_DATA = "test-data";
+    ObjectClient fakeObjectClient = new FakeObjectClient(TEST_DATA);
+    Cache mockCache = mock(Cache.class);
+
+    Block block =
+        new Block(
+            objectKey,
+            fakeObjectClient,
+            TestTelemetry.DEFAULT,
+            0,
+            TEST_DATA.length(),
+            RangeType.BLOCK,
+            0,
+            ReadMode.SYNC,
+            DEFAULT_READ_TIMEOUT,
+            DEFAULT_READ_RETRY_COUNT,
+            0,
+            true,
+            mockCache,
+            null);
+
+    byte[] buffer = new byte[TEST_DATA.length()];
+    block.read(buffer, 0, buffer.length, 0);
+
+    assertEquals(TEST_DATA, new String(buffer, StandardCharsets.UTF_8));
+
+    verify(mockCache, never()).get(any(String.class));
+    verify(mockCache, never()).set(any(String.class), any(byte[].class));
+  }
+
+  @Test
   void testNonMetadataBlockDoesNotUseCache() throws IOException {
     Block.resetCacheForTesting();
 
@@ -458,6 +492,7 @@ public class BlockTest {
             TestTelemetry.DEFAULT,
             0,
             TEST_DATA.length(),
+            RangeType.FOOTER_METADATA,
             0,
             ReadMode.SYNC,
             DEFAULT_READ_TIMEOUT,

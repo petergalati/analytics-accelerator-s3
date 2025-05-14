@@ -15,6 +15,11 @@
  */
 package software.amazon.s3.analyticsaccelerator.util;
 
+/**
+ * Enum to annotate the section of the parquet file the range is associated with. This is primarily
+ * to be used in Block to determine whether the block in question corresponds to tail metadata for
+ * caching purposes.
+ */
 public enum RangeType {
   BLOCK,
   FOOTER_METADATA,

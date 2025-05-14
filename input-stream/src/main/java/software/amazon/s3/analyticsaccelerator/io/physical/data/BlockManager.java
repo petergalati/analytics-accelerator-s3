@@ -210,6 +210,7 @@ public class BlockManager implements Closeable {
                     telemetry,
                     r.getStart(),
                     r.getEnd(),
+                    r.getRangeType(),
                     generation,
                     readMode,
                     this.configuration.getBlockReadTimeout(),

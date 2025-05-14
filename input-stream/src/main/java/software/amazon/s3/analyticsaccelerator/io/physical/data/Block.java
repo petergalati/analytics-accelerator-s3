@@ -100,6 +100,7 @@ public class Block implements Closeable {
         telemetry,
         start,
         end,
+        RangeType.BLOCK,
         generation,
         readMode,
         readTimeout,
@@ -118,6 +119,7 @@ public class Block implements Closeable {
    * @param telemetry an instance of {@link Telemetry} to use
    * @param start start of the block
    * @param end end of the block
+   * @param rangeType the type associated with the provided range
    * @param generation generation of the block in a sequential read pattern (should be 0 by default)
    * @param readMode read mode describing whether this is a sync or async fetch
    * @param readTimeout Timeout duration (in milliseconds) for reading a block object from S3
@@ -133,6 +135,7 @@ public class Block implements Closeable {
       @NonNull Telemetry telemetry,
       long start,
       long end,
+      RangeType rangeType,
       long generation,
       @NonNull ReadMode readMode,
       long readTimeout,
@@ -159,7 +162,7 @@ public class Block implements Closeable {
     this.generation = generation;
     this.telemetry = telemetry;
     this.objectKey = objectKey;
-    this.range = new Range(start, end);
+    this.range = new Range(start, end, rangeType);
     this.objectClient = objectClient;
     this.streamContext = streamContext;
     this.readMode = readMode;
