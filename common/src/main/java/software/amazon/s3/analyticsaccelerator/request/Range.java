@@ -46,7 +46,7 @@ public class Range {
 
     this.start = start;
     this.end = end;
-    this.rangeType = RangeType.Block;
+    this.rangeType = RangeType.BLOCK;
   }
 
   /**

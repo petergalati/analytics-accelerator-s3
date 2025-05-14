@@ -16,6 +16,7 @@
 package software.amazon.s3.analyticsaccelerator.util;
 
 public enum RangeType {
-  Block,
-  Footer
+  BLOCK,
+  FOOTER_METADATA,
+  FOOTER_PAGE_INDEX
 }

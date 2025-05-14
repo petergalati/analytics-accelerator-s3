@@ -82,14 +82,14 @@ public final class ParquetUtils {
       if (!shouldPrefetchSmallFile) {
         long fileMetadataStartIndex =
             contentLength - footerPrefetchSize.getFileMetadataPrefetchSize();
-        ranges.add(new Range(fileMetadataStartIndex, contentLength - 1, RangeType.Footer));
+        ranges.add(new Range(fileMetadataStartIndex, contentLength - 1, RangeType.FOOTER_METADATA));
 
         if (logicalIOConfiguration.isPrefetchPageIndexEnabled()) {
           ranges.add(
               new Range(
                   fileMetadataStartIndex - footerPrefetchSize.getPageIndexPrefetchSize(),
                   fileMetadataStartIndex - 1,
-                  RangeType.Footer));
+                  RangeType.FOOTER_PAGE_INDEX));
         }
 
         return ranges;

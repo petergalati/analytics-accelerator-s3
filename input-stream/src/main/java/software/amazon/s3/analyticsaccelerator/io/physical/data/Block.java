@@ -181,9 +181,8 @@ public class Block implements Closeable {
     int retries = 0;
     while (retries < readRetryCount) {
       try {
-        if (enableTailMetadataCaching
-            && range.getRangeType() == RangeType.Footer
-            && cache != null) {
+        LOG.info("Range type is: {}", range.getRangeType());
+        if (enableTailMetadataCaching && isTailMetadata(range) && cache != null) {
           String cacheKey = generateCacheKey();
 
           long cacheGetStartTime = System.nanoTime();
@@ -249,15 +248,14 @@ public class Block implements Closeable {
                     double s3GetMsDuration = s3GetDuration / 1_000_000.0;
 
                     LOG.info(
-                        "S3 GET request for: {}. Request took: {}ms, start = {}, end = {}.",
+                        "S3 GET request for: {}. Request took: {}ms, start = {}, end = {}. Is cache enabled = {}",
                         this.objectKey.getS3URI(),
                         String.format("%.2f", s3GetMsDuration),
                         range.getStart(),
-                        range.getEnd());
+                        range.getEnd(),
+                        enableTailMetadataCaching);
 
-                    if (enableTailMetadataCaching
-                        && range.getRangeType() == RangeType.Footer
-                        && Block.cache != null) {
+                    if (enableTailMetadataCaching && isTailMetadata(range) && Block.cache != null) {
                       String cacheKey = generateCacheKey();
 
                       long cacheSetStartTime = System.nanoTime();
@@ -417,6 +415,16 @@ public class Block implements Closeable {
   public void close() {
     // Only the source needs to be canceled, the continuation will cancel on its own
     this.source.cancel(false);
+  }
+
+  /**
+   * Checks if the current block is a tail block.
+   *
+   * @return true if the current block is a tail block, false otherwise
+   */
+  private boolean isTailMetadata(Range range) {
+    return range.getRangeType() == RangeType.FOOTER_METADATA
+        || range.getRangeType() == RangeType.FOOTER_PAGE_INDEX;
   }
 
   /**
