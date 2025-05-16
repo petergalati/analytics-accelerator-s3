@@ -130,7 +130,7 @@ public class BlockManager implements Closeable {
       return;
     }
 
-    makeRangeAvailable(pos, 1, null, readMode);
+    makeRangeAvailable(pos, 1, RangeType.BLOCK, readMode);
   }
 
   private boolean isRangeAvailable(long pos, long len) throws IOException {

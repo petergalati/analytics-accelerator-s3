@@ -197,22 +197,24 @@ public class Block implements Closeable {
 
           if (cachedData != null) {
             LOG.info(
-                "Cache hit for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
+                "Cache hit for tail metadata: {}. Request took: {}ms, start = {}, end = {}. RangeType: {}",
                 cacheKey,
                 String.format("%.2f", cacheGetMsDuration),
                 range.getStart(),
-                range.getEnd());
+                range.getEnd(),
+                range.getRangeType());
 
             data = CompletableFuture.completedFuture(cachedData);
             return;
 
           } else {
             LOG.info(
-                "Cache miss for tail metadata: {}. Request took: {}ms, start = {}, end = {}.",
+                "Cache miss for tail metadata: {}. Request took: {}ms, start = {}, end = {}. RangeType: {}",
                 cacheKey,
                 String.format("%.2f", cacheGetMsDuration),
                 range.getStart(),
-                range.getEnd());
+                range.getEnd(),
+                range.getRangeType());
           }
         }
 
@@ -251,12 +253,13 @@ public class Block implements Closeable {
                     double s3GetMsDuration = s3GetDuration / 1_000_000.0;
 
                     LOG.info(
-                        "S3 GET request for: {}. Request took: {}ms, start = {}, end = {}. Is cache enabled = {}",
+                        "S3 GET request for: {}. Request took: {}ms, start = {}, end = {}. Is cache enabled = {}. RangeType: {}",
                         this.objectKey.getS3URI(),
                         String.format("%.2f", s3GetMsDuration),
                         range.getStart(),
                         range.getEnd(),
-                        enableTailMetadataCaching);
+                        enableTailMetadataCaching,
+                        range.getRangeType());
 
                     if (enableTailMetadataCaching && isTailMetadata(range) && Block.cache != null) {
                       String cacheKey = generateCacheKey();
@@ -269,11 +272,12 @@ public class Block implements Closeable {
                       double cacheSetMsDuration = cacheSetDuration / 1_000_000.0;
 
                       LOG.info(
-                          "Cached tail metadata: {}. Cache set took: {}ms, start = {}, end = {}.",
+                          "Cached tail metadata: {}. Cache set took: {}ms, start = {}, end = {}. RangeType: {}",
                           cacheKey,
                           String.format("%.2f", cacheSetMsDuration),
                           range.getStart(),
-                          range.getEnd());
+                          range.getEnd(),
+                          range.getRangeType());
                     }
 
                     return fetchedData;

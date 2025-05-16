@@ -30,6 +30,7 @@ import software.amazon.s3.analyticsaccelerator.request.ObjectMetadata;
 import software.amazon.s3.analyticsaccelerator.request.Range;
 import software.amazon.s3.analyticsaccelerator.request.ReadMode;
 import software.amazon.s3.analyticsaccelerator.util.ObjectKey;
+import software.amazon.s3.analyticsaccelerator.util.RangeType;
 import software.amazon.s3.analyticsaccelerator.util.StreamAttributes;
 
 /** A Blob representing an object. */
@@ -92,7 +93,7 @@ public class Blob implements Closeable {
     Preconditions.checkArgument(0 <= len, "`len` must not be negative");
     Preconditions.checkArgument(off < buf.length, "`off` must be less than size of buffer");
 
-    blockManager.makeRangeAvailable(pos, len, null, ReadMode.SYNC);
+    blockManager.makeRangeAvailable(pos, len, RangeType.BLOCK, ReadMode.SYNC);
 
     long nextPosition = pos;
     int numBytesRead = 0;
