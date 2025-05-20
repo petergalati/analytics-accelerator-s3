@@ -58,7 +58,9 @@ public class Block implements Closeable {
   private final int readRetryCount;
   private final long contentLength;
   private final boolean enableTailMetadataCaching;
+
   private static Cache cache;
+  private static ExecutorService executorService;
 
   @Getter private final long start;
   @Getter private final long end;
@@ -68,8 +70,6 @@ public class Block implements Closeable {
   private static final String OPERATION_BLOCK_GET_JOIN = "block.get.join";
 
   private static final Logger LOG = LoggerFactory.getLogger(Block.class);
-
-  private static final ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
   private final CompletableFuture<Void> initialisationTask;
 
@@ -112,6 +112,7 @@ public class Block implements Closeable {
         0,
         false,
         null,
+        null,
         null);
   }
 
@@ -147,6 +148,7 @@ public class Block implements Closeable {
       long contentLength,
       boolean enableTailMetadataCaching,
       Cache cache,
+      ExecutorService executorService,
       StreamContext streamContext)
       throws IOException {
 
@@ -180,17 +182,25 @@ public class Block implements Closeable {
       Block.cache = cache;
     }
 
+    if (enableTailMetadataCaching && Block.executorService == null && executorService != null) {
+      Block.executorService = executorService;
+    }
+
     this.initialisationTask = new CompletableFuture<>();
 
-    executor.submit(() -> {
-      try {
-        generateSourceAndData();
-        initialisationTask.complete(null);
-      } catch (IOException e) {
-        initialisationTask.completeExceptionally(e);
-        throw new RuntimeException(e);
-      }
-    });
+    if (executorService != null) {
+        executorService.submit(() -> {
+          try {
+            generateSourceAndData();
+            initialisationTask.complete(null);
+          } catch (IOException e) {
+            initialisationTask.completeExceptionally(e);
+            throw new RuntimeException(e);
+          }
+        });
+    } else {
+      generateSourceAndData();
+    }
 
   }
 

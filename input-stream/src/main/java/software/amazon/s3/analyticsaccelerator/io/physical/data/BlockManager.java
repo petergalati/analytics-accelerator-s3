@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.concurrent.ExecutorService;
+
 import lombok.NonNull;
 import software.amazon.s3.analyticsaccelerator.common.Preconditions;
 import software.amazon.s3.analyticsaccelerator.common.telemetry.Operation;
@@ -50,6 +52,7 @@ public class BlockManager implements Closeable {
   private final PhysicalIOConfiguration configuration;
   private final RangeOptimiser rangeOptimiser;
   private final Cache cache;
+  private final ExecutorService executorService;
   private StreamContext streamContext;
 
   private static final String OPERATION_MAKE_RANGE_AVAILABLE = "block.manager.make.range.available";
@@ -69,7 +72,7 @@ public class BlockManager implements Closeable {
       @NonNull ObjectMetadata metadata,
       @NonNull Telemetry telemetry,
       @NonNull PhysicalIOConfiguration configuration) {
-    this(objectKey, objectClient, metadata, telemetry, configuration, null, null);
+    this(objectKey, objectClient, metadata, telemetry, configuration, null, null, null);
   }
 
   /**
@@ -90,6 +93,7 @@ public class BlockManager implements Closeable {
       @NonNull Telemetry telemetry,
       @NonNull PhysicalIOConfiguration configuration,
       Cache cache,
+      ExecutorService executorService,
       StreamContext streamContext) {
     this.objectKey = objectKey;
     this.objectClient = objectClient;
@@ -97,6 +101,7 @@ public class BlockManager implements Closeable {
     this.telemetry = telemetry;
     this.configuration = configuration;
     this.cache = cache;
+    this.executorService = executorService;
     this.blockStore = new BlockStore(objectKey, metadata);
     this.patternDetector = new SequentialPatternDetector(blockStore);
     this.sequentialReadProgression = new SequentialReadProgression(configuration);
@@ -219,6 +224,7 @@ public class BlockManager implements Closeable {
                     metadata.getContentLength(),
                     this.configuration.isEnableTailMetadataCaching(),
                     cache,
+                    executorService,
                     streamContext);
             blockStore.add(block);
           }

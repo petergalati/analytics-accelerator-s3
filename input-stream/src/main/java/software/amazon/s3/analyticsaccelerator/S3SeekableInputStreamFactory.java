@@ -16,6 +16,9 @@
 package software.amazon.s3.analyticsaccelerator;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
@@ -54,6 +57,7 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
   private final ParquetColumnPrefetchStore parquetColumnPrefetchStore;
   private final MetadataStore objectMetadataStore;
   private final Cache cache;
+  private final ExecutorService executorService;
   private final BlobStore objectBlobStore;
   private final Telemetry telemetry;
   private final ObjectFormatSelector objectFormatSelector;
@@ -78,19 +82,23 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
     this.objectMetadataStore =
         new MetadataStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration());
     this.objectFormatSelector = new ObjectFormatSelector(configuration.getLogicalIOConfiguration());
+
     if (configuration.getPhysicalIOConfiguration().isEnableTailMetadataCaching()) {
       this.cache =
           new ValkeyCacheImpl(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
+
+      this.executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10);
+
       LOG.info("Cache successfully instantiated");
-      LOG.info(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
 
     } else {
       LOG.info("Cache disabled");
 
       this.cache = null;
+      this.executorService = null;
     }
     this.objectBlobStore =
-        new BlobStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration(), cache);
+        new BlobStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration(), cache, executorService);
   }
 
   /**
