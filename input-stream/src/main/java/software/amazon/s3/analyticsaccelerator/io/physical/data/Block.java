@@ -17,8 +17,8 @@ package software.amazon.s3.analyticsaccelerator.io.physical.data;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
+
 import lombok.Getter;
 import lombok.NonNull;
 import org.slf4j.Logger;
@@ -68,6 +68,10 @@ public class Block implements Closeable {
   private static final String OPERATION_BLOCK_GET_JOIN = "block.get.join";
 
   private static final Logger LOG = LoggerFactory.getLogger(Block.class);
+
+  private static final ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+  private final CompletableFuture<Void> initialisationTask;
 
   /**
    * Constructs a Block data.
@@ -176,7 +180,18 @@ public class Block implements Closeable {
       Block.cache = cache;
     }
 
-    generateSourceAndData();
+    this.initialisationTask = new CompletableFuture<>();
+
+    executor.submit(() -> {
+      try {
+        generateSourceAndData();
+        initialisationTask.complete(null);
+      } catch (IOException e) {
+        initialisationTask.completeExceptionally(e);
+        throw new RuntimeException(e);
+      }
+    });
+
   }
 
   /** Method to help construct source and data */
@@ -376,6 +391,13 @@ public class Block implements Closeable {
    * @throws IOException if an I/O error occurs after maximum retry counts
    */
   private byte[] getDataWithRetries() throws IOException {
+
+    try {
+      initialisationTask.get(this.readTimeout, TimeUnit.MILLISECONDS);
+    } catch (Exception e) {
+      throw new IOException("Block initialisation error", e);
+    }
+
     for (int i = 0; i < this.readRetryCount; i++) {
       try {
         return this.getData();
