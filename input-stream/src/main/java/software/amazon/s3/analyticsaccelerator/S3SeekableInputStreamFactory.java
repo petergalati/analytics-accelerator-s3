@@ -87,9 +87,9 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
       this.cache =
           new ValkeyCacheImpl(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
 
-      this.executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10);
-
       LOG.info("Cache successfully instantiated");
+
+      this.executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10);
 
     } else {
       LOG.info("Cache disabled");
@@ -201,8 +201,30 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
     this.objectMetadataStore.close();
     this.objectBlobStore.close();
     this.telemetry.close();
+
+    handleCacheClosure(cache, configuration.getPhysicalIOConfiguration().isEnableCacheFlush());
+  }
+
+  private void handleCacheClosure(Cache cache, boolean shouldFlushCache) {
     if (cache != null) {
+
+      if (shouldFlushCache) {
+        LOG.info("Cache is being closed");
+        LOG.info("Starting to clear cache");
+
+        long cacheClearStartTime = System.nanoTime();
+
+        cache.clearCache();
+
+        long cacheClearDuration = System.nanoTime() - cacheClearStartTime;
+        double cacheClearMsDuration = cacheClearDuration / 1_000_000.0;
+
+        LOG.info("Cache has been cleared");
+        LOG.info("Cache clear took: {}ms", String.format("%.2f", cacheClearMsDuration));
+      }
+
       cache.close();
     }
+
   }
 }

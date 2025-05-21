@@ -43,6 +43,7 @@ public class PhysicalIOConfiguration {
   private static final int DEFAULT_BLOCK_READ_RETRY_COUNT = 20;
   private static final boolean DEFAULT_ENABLE_TAIL_METADATA_CACHING = false;
   private static final String DEFAULT_CACHE_ENDPOINT = "";
+  private static final boolean DEFAULT_ENABLE_CACHE_FLUSH = false;
 
   /** Capacity, in blobs. {@link PhysicalIOConfiguration#DEFAULT_CAPACITY_BLOB_STORE} by default. */
   @Builder.Default private int blobStoreCapacity = DEFAULT_CAPACITY_BLOB_STORE;
@@ -117,6 +118,11 @@ public class PhysicalIOConfiguration {
 
   private static final String CACHE_ENDPOINT_KEY = "cache.endpoint";
 
+  /** Enable cache flushes after stream is closed */
+  @Builder.Default private boolean enableCacheFlush = DEFAULT_ENABLE_CACHE_FLUSH;
+
+  private static final String ENABLE_CACHE_FLUSH_KEY = "cache.flush";
+
   /** Default set of settings for {@link PhysicalIO} */
   public static final PhysicalIOConfiguration DEFAULT = PhysicalIOConfiguration.builder().build();
 
@@ -147,7 +153,12 @@ public class PhysicalIOConfiguration {
         .enableTailMetadataCaching(
             configuration.getBoolean(
                 ENABLE_TAIL_METADATA_CACHING_KEY, DEFAULT_ENABLE_TAIL_METADATA_CACHING))
-        .cacheEndpoint(configuration.getString(CACHE_ENDPOINT_KEY, DEFAULT_CACHE_ENDPOINT))
+        .cacheEndpoint(
+                configuration.getString(
+                        CACHE_ENDPOINT_KEY, DEFAULT_CACHE_ENDPOINT))
+        .enableCacheFlush(
+                configuration.getBoolean(
+                        ENABLE_CACHE_FLUSH_KEY, DEFAULT_ENABLE_CACHE_FLUSH))
         .build();
   }
 

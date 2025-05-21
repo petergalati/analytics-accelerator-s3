@@ -39,4 +39,7 @@ public interface Cache {
 
   /** Closes the connection to the ElastiCache server */
   void close();
+
+  /** Clears all data from the cache */
+  void clearCache();
 }

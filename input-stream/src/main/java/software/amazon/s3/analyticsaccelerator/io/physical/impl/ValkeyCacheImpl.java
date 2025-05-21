@@ -89,4 +89,10 @@ public class ValkeyCacheImpl implements Cache {
       jedisCluster.close();
     }
   }
+
+  /** Closes the ElastiCache cache for benchmarking */
+  @Override
+  public void clearCache() {
+    jedisCluster.flushAll();
+  }
 }
