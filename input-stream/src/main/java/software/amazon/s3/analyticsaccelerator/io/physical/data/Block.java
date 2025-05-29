@@ -199,7 +199,14 @@ public class Block implements Closeable {
             }
           });
     } else {
-      generateSourceAndData();
+      try {
+        generateSourceAndData();
+        this.initialisationTask.complete(null);
+
+      } catch (IOException e) {
+        initialisationTask.completeExceptionally(e);
+        throw e;
+      }
     }
   }
 

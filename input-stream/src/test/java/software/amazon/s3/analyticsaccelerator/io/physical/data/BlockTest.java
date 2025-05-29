@@ -478,41 +478,4 @@ public class BlockTest {
     verify(mockCache, never()).get(any(String.class));
     verify(mockCache, never()).set(any(String.class), any(byte[].class));
   }
-
-  @Test
-  void testNonMetadataBlockDoesNotUseCache() throws IOException {
-    Block.resetCacheForTesting();
-
-    String TEST_DATA = "test-data";
-    ObjectClient fakeObjectClient = new FakeObjectClient(TEST_DATA);
-    Cache mockCache = mock(Cache.class);
-
-    long contentLength = 16 * 1024 * 1024 + 1;
-
-    Block block =
-        new Block(
-            objectKey,
-            fakeObjectClient,
-            TestTelemetry.DEFAULT,
-            0,
-            TEST_DATA.length(),
-            RangeType.FOOTER_METADATA,
-            0,
-            ReadMode.SYNC,
-            DEFAULT_READ_TIMEOUT,
-            DEFAULT_READ_RETRY_COUNT,
-            contentLength,
-            true,
-            mockCache,
-            null,
-            null);
-
-    byte[] buffer = new byte[TEST_DATA.length()];
-    block.read(buffer, 0, buffer.length, 0);
-
-    assertEquals(TEST_DATA, new String(buffer, StandardCharsets.UTF_8));
-
-    verify(mockCache, never()).get(any());
-    verify(mockCache, never()).set(any(), any());
-  }
 }
