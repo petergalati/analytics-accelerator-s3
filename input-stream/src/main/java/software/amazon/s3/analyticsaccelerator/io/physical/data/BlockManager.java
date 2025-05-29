@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ExecutorService;
-
 import lombok.NonNull;
 import software.amazon.s3.analyticsaccelerator.common.Preconditions;
 import software.amazon.s3.analyticsaccelerator.common.telemetry.Operation;

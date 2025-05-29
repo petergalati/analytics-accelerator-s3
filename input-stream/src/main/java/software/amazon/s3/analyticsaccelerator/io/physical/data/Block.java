@@ -18,7 +18,6 @@ package software.amazon.s3.analyticsaccelerator.io.physical.data;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.*;
-
 import lombok.Getter;
 import lombok.NonNull;
 import org.slf4j.Logger;
@@ -189,19 +188,19 @@ public class Block implements Closeable {
     this.initialisationTask = new CompletableFuture<>();
 
     if (executorService != null) {
-        executorService.submit(() -> {
-          try {
-            generateSourceAndData();
-            initialisationTask.complete(null);
-          } catch (IOException e) {
-            initialisationTask.completeExceptionally(e);
-            throw new RuntimeException(e);
-          }
-        });
+      executorService.submit(
+          () -> {
+            try {
+              generateSourceAndData();
+              initialisationTask.complete(null);
+            } catch (IOException e) {
+              initialisationTask.completeExceptionally(e);
+              throw new RuntimeException(e);
+            }
+          });
     } else {
       generateSourceAndData();
     }
-
   }
 
   /** Method to help construct source and data */

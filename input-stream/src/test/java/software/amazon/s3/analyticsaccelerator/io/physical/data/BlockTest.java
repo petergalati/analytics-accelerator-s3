@@ -357,6 +357,7 @@ public class BlockTest {
             0,
             true,
             mockCache,
+            null,
             null);
 
     byte[] buffer = new byte[TEST_DATA.length()];
@@ -395,6 +396,7 @@ public class BlockTest {
             0,
             true,
             mockCache,
+            null,
             null);
 
     byte[] buffer = new byte[TEST_DATA.length()];
@@ -430,6 +432,7 @@ public class BlockTest {
             0,
             false,
             mockCache,
+            null,
             null);
 
     byte[] buffer = new byte[TEST_DATA.length()];
@@ -464,6 +467,7 @@ public class BlockTest {
             0,
             true,
             mockCache,
+            null,
             null);
 
     byte[] buffer = new byte[TEST_DATA.length()];
@@ -500,6 +504,7 @@ public class BlockTest {
             contentLength,
             true,
             mockCache,
+            null,
             null);
 
     byte[] buffer = new byte[TEST_DATA.length()];

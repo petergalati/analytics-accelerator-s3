@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-
 import lombok.NonNull;
 import software.amazon.s3.analyticsaccelerator.common.telemetry.Telemetry;
 import software.amazon.s3.analyticsaccelerator.io.physical.Cache;
@@ -103,7 +102,14 @@ public class BlobStore implements Closeable {
                 uri,
                 metadata,
                 new BlockManager(
-                    uri, objectClient, metadata, telemetry, configuration, cache, executorService, streamContext),
+                    uri,
+                    objectClient,
+                    metadata,
+                    telemetry,
+                    configuration,
+                    cache,
+                    executorService,
+                    streamContext),
                 telemetry));
   }
 
