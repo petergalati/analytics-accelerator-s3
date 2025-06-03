@@ -1,0 +1,14 @@
+{
+  "prefetching": {
+    "concurrency_limit": 20
+  },
+
+  "cache": {
+    "time_to_live": 1,
+    "elasticache_endpoint": "www.xyz.com"
+  },
+
+  "s3": {
+    "region": "us-east-1"
+  }
+}
