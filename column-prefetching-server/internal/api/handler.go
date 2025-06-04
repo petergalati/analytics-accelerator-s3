@@ -1,8 +1,9 @@
 package api
 
 import (
+	"column-prefetching-server/internal/service"
+	"encoding/json"
 	"net/http"
-	"strings"
 )
 
 type ColumnPrefetchRequest struct {
@@ -10,15 +11,22 @@ type ColumnPrefetchRequest struct {
 	Columns []string `json:"columns"`
 }
 
-func PrefetchColumns(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-}
-
-func PrefetchHandler(w http.ResponseWriter, r *http.Request) {
+func (api *API) HandlePrefetchColumns(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	switch {
-	case r.Method == http.MethodHead && strings.HasPrefix(r.URL.Path, "/api/prefetch/"):
-		PrefetchColumns(w, r)
+	var apiReq ColumnPrefetchRequest
+
+	err := json.NewDecoder(r.Body).Decode(&apiReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
+
+	prefetchRequest := service.PrefetchRequest{
+		Bucket:  apiReq.Bucket,
+		Columns: apiReq.Columns,
+	}
+
+	api.PrefetchingService.PrefetchColumns(r.Context(), prefetchRequest)
+
+	w.WriteHeader(http.StatusAccepted)
 }

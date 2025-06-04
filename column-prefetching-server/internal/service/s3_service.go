@@ -145,9 +145,11 @@ func (service *S3Service) GetColumnData(ctx context.Context, bucket string, key 
 
 	parquetColumnData := ParquetColumnData{
 		Bucket: bucket,
-		File:   key,
+		Key:    key,
 		Column: requestedColumn.ColumnName,
 		Data:   columnDataBytes,
+		Etag:   *columnDataResult.ETag,
+		Range:  rangeHeader,
 	}
 
 	return parquetColumnData, nil

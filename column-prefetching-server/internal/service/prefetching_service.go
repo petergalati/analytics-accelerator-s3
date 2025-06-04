@@ -12,9 +12,9 @@ import (
 )
 
 type PrefetchingService struct {
-	s3Service        *S3Service
-	cacheService     *CacheService
-	concurrencyLimit int
+	S3Service    *S3Service
+	CacheService *CacheService
+	Config       project_config.PrefetchingConfig
 }
 
 type PrefetchRequest struct {
@@ -29,9 +29,11 @@ type RequestedColumn struct {
 }
 type ParquetColumnData struct {
 	Bucket string
-	File   string
+	Key    string
 	Column string
 	Data   []byte
+	Etag   string
+	Range  string
 }
 
 func NewPrefetchingService(
@@ -40,14 +42,14 @@ func NewPrefetchingService(
 	cfg project_config.PrefetchingConfig,
 ) *PrefetchingService {
 	return &PrefetchingService{
-		s3Service:        s3Service,
-		cacheService:     cacheService,
-		concurrencyLimit: cfg.ConcurrencyLimit,
+		S3Service:    s3Service,
+		CacheService: cacheService,
+		Config:       cfg,
 	}
 }
 
 func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req PrefetchRequest) error {
-	files, err := service.s3Service.ListParquetFiles(ctx, req.Bucket)
+	files, err := service.S3Service.ListParquetFiles(ctx, req.Bucket)
 
 	if err != nil {
 		return fmt.Errorf("failed to list parquet files: %w", err)
@@ -62,7 +64,7 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 	}
 
 	// creating a buffered channel, of length concurrencyLimit to act as a semaphore. This limits the number of concurrent goroutines.
-	sem := make(chan struct{}, service.concurrencyLimit)
+	sem := make(chan struct{}, service.Config.ConcurrencyLimit)
 	var wg sync.WaitGroup
 
 	for _, file := range files {
@@ -88,11 +90,11 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 }
 
 func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, bucket string, file types.Object, columnSet map[string]struct{}) error {
-	footerData, _ := service.s3Service.GetParquetFileFooter(ctx, bucket, *file.Key, *file.Size)
+	footerData, _ := service.S3Service.GetParquetFileFooter(ctx, bucket, *file.Key, *file.Size)
 
 	requestedColumns, _ := getRequestedColumns(footerData, columnSet)
 
-	sem := make(chan struct{}, service.concurrencyLimit)
+	sem := make(chan struct{}, service.Config.ConcurrencyLimit)
 	var wg sync.WaitGroup
 
 	for _, requestedColumn := range requestedColumns {
@@ -105,12 +107,14 @@ func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, buck
 
 			defer func() { <-sem }()
 
-			columnData, _ := service.s3Service.GetColumnData(ctx, bucket, *file.Key, requestedColumn)
+			columnData, _ := service.S3Service.GetColumnData(ctx, bucket, *file.Key, requestedColumn)
 
-			service.cacheService.
+			service.CacheService.CacheColumnData(columnData)
 
 		}(requestedColumn)
 	}
+
+	return nil
 
 }
 

@@ -5,7 +5,8 @@
 
   "cache": {
     "time_to_live": 1,
-    "elasticache_endpoint": "www.xyz.com"
+    "elasticache_endpoint": "www.xyz.com",
+    "elasticache_port": 6379
   },
 
   "s3": {

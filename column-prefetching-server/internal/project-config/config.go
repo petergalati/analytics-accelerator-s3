@@ -12,7 +12,8 @@ type PrefetchingConfig struct {
 
 type CacheConfig struct {
 	TimeToLive          time.Duration `json:"time_to_live"`
-	ElasticacheEndpoint string        `json:"elasticache_endpoint"`
+	ElastiCacheEndpoint string        `json:"elasticache_endpoint"`
+	ElastiCachePort     int           `json:"elasticache_port"`
 }
 
 type S3Config struct {

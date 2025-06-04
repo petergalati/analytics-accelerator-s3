@@ -6,7 +6,6 @@ import (
 	"column-prefetching-server/internal/service"
 	"log"
 
-	"context"
 	"net/http"
 )
 
@@ -20,7 +19,21 @@ func main() {
 		log.Fatalf("Failed to create S3 service: %v", err)
 	}
 
-	mux := api.SetupRoutes()
+	// Initialise Cache service
+	elastiCacheService, err := service.NewCacheService(cfg.Cache)
+	if err != nil {
+		log.Fatalf("Failed to create ElastiCache service: %v", err)
+	}
+
+	prefetchingService := service.NewPrefetchingService(
+		s3Service,
+		elastiCacheService,
+		cfg.Prefetching,
+	)
+
+	apiInstance := api.NewAPI(prefetchingService)
+
+	mux := apiInstance.SetupRoutes()
 
 	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
