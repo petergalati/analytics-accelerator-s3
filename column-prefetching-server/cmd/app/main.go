@@ -1,4 +1,4 @@
-package app
+package main
 
 import (
 	"column-prefetching-server/internal/api"
@@ -36,6 +36,7 @@ func main() {
 	mux := apiInstance.SetupRoutes()
 
 	err = http.ListenAndServe(":8080", mux)
+
 	if err != nil {
 		return
 	}
