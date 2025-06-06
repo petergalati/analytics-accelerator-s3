@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// initialise project-config
-	cfg, _ := project_config.LoadConfig("project-config.json")
+	cfg, _ := project_config.LoadConfig("config.json")
 
 	// Initialise S3 service
 	s3Service, err := service.NewS3Service(cfg.S3)

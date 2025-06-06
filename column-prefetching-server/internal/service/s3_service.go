@@ -5,7 +5,6 @@ import (
 	"column-prefetching-server/internal/project-config"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/apache/arrow-go/v18/parquet/metadata"
@@ -39,18 +38,18 @@ func NewS3Service(cfg project_config.S3Config) (*S3Service, error) {
 	}, nil
 }
 
-func (service *S3Service) ListParquetFiles(ctx context.Context, bucket string) ([]types.Object, error) {
+func (service *S3Service) ListParquetFiles(ctx context.Context, bucket string, prefix string) ([]types.Object, error) {
 	var err error
 	var output *s3.ListObjectsV2Output
 	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
 	}
 	var objects []types.Object
 	objectPaginator := s3.NewListObjectsV2Paginator(service.s3Client, input)
 
 	for objectPaginator.HasMorePages() {
 		output, err = objectPaginator.NextPage(ctx)
-
 		if err != nil {
 			var noBucket *types.NoSuchBucket
 
@@ -92,18 +91,14 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 	}
 
 	footerLengthBytes := footerBytes[:4]
-	var footerLength int64
+	var footerLength int32
 
 	buf := bytes.NewReader(footerLengthBytes)
 	err := binary.Read(buf, binary.LittleEndian, &footerLength)
 
-	if err != nil {
-		return nil, err
-	}
-
 	// now we have footerLength, we can make the S3 request to get actual footer content
 
-	rangeStart = fileSize - 8 - footerLength
+	rangeStart = fileSize - 8 - int64(footerLength)
 	rangeEnd = fileSize - 9
 	rangeHeader = fmt.Sprintf("bytes=%d-%d", rangeStart, rangeEnd)
 
@@ -120,12 +115,7 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 		return nil, fmt.Errorf("failed to read footer content: %w", err)
 	}
 
-	fileMetadata := &metadata.FileMetaData{}
-
-	err = json.Unmarshal(footerContent, fileMetadata)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal parquet footer: %w", err)
-	}
+	fileMetadata, _ := metadata.NewFileMetaData(footerContent, nil)
 
 	return fileMetadata, nil
 }

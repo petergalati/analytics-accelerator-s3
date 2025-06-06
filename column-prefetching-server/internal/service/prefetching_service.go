@@ -19,6 +19,7 @@ type PrefetchingService struct {
 
 type PrefetchRequest struct {
 	Bucket  string
+	Prefix  string
 	Columns []string
 }
 
@@ -49,12 +50,11 @@ func NewPrefetchingService(
 }
 
 func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req PrefetchRequest) error {
-	files, err := service.S3Service.ListParquetFiles(ctx, req.Bucket)
+	files, err := service.S3Service.ListParquetFiles(ctx, req.Bucket, req.Prefix)
 
 	if err != nil {
 		return fmt.Errorf("failed to list parquet files: %w", err)
 	}
-
 	log.Printf("Found %d parquet files to process for columns: %v", len(files), req.Columns)
 
 	// convert slice of columns to set of columns
@@ -68,6 +68,11 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 	var wg sync.WaitGroup
 
 	for _, file := range files {
+
+		if !strings.HasSuffix(*file.Key, ".parquet") {
+			continue
+		}
+
 		wg.Add(1)
 
 		go func(file types.Object) {
@@ -86,6 +91,7 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 		}(file)
 	}
 
+	wg.Wait()
 	return nil
 }
 
@@ -108,11 +114,12 @@ func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, buck
 			defer func() { <-sem }()
 
 			columnData, _ := service.S3Service.GetColumnData(ctx, bucket, *file.Key, requestedColumn)
-
 			service.CacheService.CacheColumnData(columnData)
 
 		}(requestedColumn)
 	}
+
+	wg.Wait()
 
 	return nil
 
@@ -126,7 +133,8 @@ func getRequestedColumns(footerData *metadata.FileMetaData, columnSet map[string
 		for _, columnChunk := range rowGroup.Columns {
 			columnMetaData := columnChunk.MetaData
 
-			columnName := strings.Join(columnMetaData.PathInSchema, ".")
+			pathInSchema := columnMetaData.PathInSchema
+			columnName := pathInSchema[len(pathInSchema)-1]
 
 			// we only want to process columns which are requested by AAL
 			if _, found := columnSet[columnName]; found {

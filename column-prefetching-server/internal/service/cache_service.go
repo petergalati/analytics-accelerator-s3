@@ -3,7 +3,6 @@ package service
 import (
 	project_config "column-prefetching-server/internal/project-config"
 	"fmt"
-
 	"github.com/valkey-io/valkey-glide/go/api"
 )
 
@@ -17,7 +16,8 @@ func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 
 	config := api.NewGlideClusterClientConfiguration().
 		WithAddress(&api.NodeAddress{Host: host, Port: port}).
-		WithUseTLS(true)
+		WithUseTLS(true).
+		WithRequestTimeout(5000)
 
 	client, err := api.NewGlideClusterClient(config)
 
@@ -32,10 +32,15 @@ func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 
 func (service *CacheService) CacheColumnData(data ParquetColumnData) error {
 	cacheKey := generateCacheKey(data)
+	//startTime := time.Now()
 	_, err := service.elastiCacheClient.Set(cacheKey, string(data.Data))
+	//elapsedTime := time.Since(startTime)
+	//fmt.Printf("Set operation for key '%s' took: %s\n", cacheKey, elapsedTime)
+
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
