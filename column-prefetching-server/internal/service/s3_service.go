@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"io"
 	"log"
+	"time"
 )
 
 type S3Service struct {
@@ -49,7 +50,13 @@ func (service *S3Service) ListParquetFiles(ctx context.Context, bucket string, p
 	objectPaginator := s3.NewListObjectsV2Paginator(service.s3Client, input)
 
 	for objectPaginator.HasMorePages() {
+
+		startTime := time.Now()
 		output, err = objectPaginator.NextPage(ctx)
+		elapsedTime := time.Since(startTime)
+
+		AddDurationToTotalS3CPUTime(elapsedTime)
+
 		if err != nil {
 			var noBucket *types.NoSuchBucket
 
@@ -73,12 +80,18 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 
 	rangeHeader := fmt.Sprintf("bytes=%d-%d", rangeStart, rangeEnd)
 
+	// TODO: combine GET for last 8 bytes and GET for footer in to a single 1 MB request.
+
 	// make request for only the last 8 bytes of the Parquet file
+	startTime := time.Now()
 	result, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 		Range:  aws.String(rangeHeader),
 	})
+	elapsedTime := time.Since(startTime)
+
+	AddDurationToTotalS3CPUTime(elapsedTime)
 
 	defer result.Body.Close()
 
@@ -102,11 +115,15 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 	rangeEnd = fileSize - 9
 	rangeHeader = fmt.Sprintf("bytes=%d-%d", rangeStart, rangeEnd)
 
+	startTime = time.Now()
 	footerResult, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 		Range:  aws.String(rangeHeader),
 	})
+	elapsedTime = time.Since(startTime)
+
+	AddDurationToTotalS3CPUTime(elapsedTime)
 
 	defer footerResult.Body.Close()
 
@@ -123,11 +140,15 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 func (service *S3Service) GetColumnData(ctx context.Context, bucket string, key string, requestedColumn RequestedColumn) (ParquetColumnData, error) {
 	rangeHeader := fmt.Sprintf("bytes=%d-%d", requestedColumn.Start, requestedColumn.End)
 
+	startTime := time.Now()
 	columnDataResult, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 		Range:  aws.String(rangeHeader),
 	})
+	elapsedTime := time.Since(startTime)
+
+	AddDurationToTotalS3CPUTime(elapsedTime)
 
 	defer columnDataResult.Body.Close()
 

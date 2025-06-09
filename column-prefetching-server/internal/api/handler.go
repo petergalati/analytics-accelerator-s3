@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// ColumnPrefetchRequest represents the format of the incoming HTTP request from ALL.
 type ColumnPrefetchRequest struct {
 	Bucket  string   `json:"bucket"`
 	Prefix  string   `json:"prefix"`
@@ -33,7 +34,8 @@ func (api *API) HandlePrefetchColumns(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	api.PrefetchingService.PrefetchColumns(r.Context(), prefetchRequest)
 	elapsedTime := time.Since(startTime)
-	fmt.Printf("prefetching took: %s \n", elapsedTime)
+
+	fmt.Printf("Prefetching took: %f seconds\n", elapsedTime.Seconds())
 
 	w.WriteHeader(http.StatusAccepted)
 }

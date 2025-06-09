@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	// initialise project-config
+	// Initialise project config
 	cfg, _ := project_config.LoadConfig("config.json")
 
 	// Initialise S3 service

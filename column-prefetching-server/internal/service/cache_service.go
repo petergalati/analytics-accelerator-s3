@@ -4,6 +4,7 @@ import (
 	project_config "column-prefetching-server/internal/project-config"
 	"fmt"
 	"github.com/valkey-io/valkey-glide/go/api"
+	"time"
 )
 
 type CacheService struct {
@@ -18,7 +19,6 @@ func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 		WithAddress(&api.NodeAddress{Host: host, Port: port}).
 		WithUseTLS(true).
 		WithRequestTimeout(5000)
-
 	client, err := api.NewGlideClusterClient(config)
 
 	if err != nil {
@@ -32,10 +32,18 @@ func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 
 func (service *CacheService) CacheColumnData(data ParquetColumnData) error {
 	cacheKey := generateCacheKey(data)
-	//startTime := time.Now()
+
+	startTime := time.Now()
+
+	//TODO: the following is how we would batch SET to cache
+	//_, err := service.elastiCacheClient.MSet(map[string]string{
+	//	cacheKey: string(data.Data),
+	//})
+
 	_, err := service.elastiCacheClient.Set(cacheKey, string(data.Data))
-	//elapsedTime := time.Since(startTime)
-	//fmt.Printf("Set operation for key '%s' took: %s\n", cacheKey, elapsedTime)
+	elapsedTime := time.Since(startTime)
+
+	AddDurationToTotalCacheCPUTime(elapsedTime)
 
 	if err != nil {
 		return err

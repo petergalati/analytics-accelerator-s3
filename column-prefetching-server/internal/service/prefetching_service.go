@@ -92,6 +92,10 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 	}
 
 	wg.Wait()
+
+	fmt.Printf("Total sequential time spent making S3 Requests: %d ms \n", GetTotalS3CPUTime())
+	fmt.Printf("Total sequential time spent making ElastiCache Requests: %d ms \n", GetTotalCacheCPUTime())
+
 	return nil
 }
 
