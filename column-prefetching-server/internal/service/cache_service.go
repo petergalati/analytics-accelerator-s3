@@ -12,6 +12,7 @@ type CacheService struct {
 }
 
 func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
+	// TODO: decide if we want to pass in the host and port from AAL via the HTTP request to CPS endpoint
 	host := cfg.ElastiCacheEndpoint
 	port := cfg.ElastiCachePort
 

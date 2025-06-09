@@ -111,7 +111,7 @@ public class PhysicalIOConfiguration {
   /** Enable tail metadata caching with ElastiCache */
   @Builder.Default private boolean enableTailMetadataCaching = DEFAULT_ENABLE_TAIL_METADATA_CACHING;
 
-  private static final String ENABLE_TAIL_METADATA_CACHING_KEY = "cache.enabled";
+  private static final String ENABLE_TAIL_METADATA_CACHING_KEY = "footerdatacache.enabled";
 
   /** ElastiCache endpoint */
   @Builder.Default private String cacheEndpoint = DEFAULT_CACHE_ENDPOINT;
@@ -176,6 +176,7 @@ public class PhysicalIOConfiguration {
    * @param blockReadRetryCount Number of retries for block read failure
    * @param enableTailMetadataCaching Boolean flag to enable or disable tail metadata caching
    * @param cacheEndpoint The endpoint of the ElastiCache cache in use
+   * @param enableCacheFlush Boolean flag to enable or disable cache flushing each iteration
    */
   @Builder
   private PhysicalIOConfiguration(
@@ -190,6 +191,8 @@ public class PhysicalIOConfiguration {
       long blockReadTimeout,
       int blockReadRetryCount,
       boolean enableTailMetadataCaching,
+      boolean enableColumnDataCaching,
+      String cpsEndpoint,
       String cacheEndpoint,
       boolean enableCacheFlush) {
     Preconditions.checkArgument(blobStoreCapacity > 0, "`blobStoreCapacity` must be positive");
@@ -245,8 +248,8 @@ public class PhysicalIOConfiguration {
     builder.append("\tenableTailMetadataCaching: " + enableTailMetadataCaching + "\n");
     if (enableTailMetadataCaching) {
       builder.append("\tcacheEndpoint: " + cacheEndpoint + "\n");
+      builder.append("\tenableCacheFlush: " + enableCacheFlush + "\n");
     }
-    builder.append("\tenableCacheFlush: " + enableCacheFlush + "\n");
 
     return builder.toString();
   }

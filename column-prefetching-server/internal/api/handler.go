@@ -25,6 +25,21 @@ func (api *API) HandlePrefetchColumns(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
+	if apiReq.Bucket == "" {
+		http.Error(w, "bucket field is missing", http.StatusBadRequest)
+		return
+	}
+
+	if apiReq.Prefix == "" {
+		http.Error(w, "prefix field is missing", http.StatusBadRequest)
+		return
+	}
+
+	if len(apiReq.Columns) == 0 {
+		http.Error(w, "columns field is missing", http.StatusBadRequest)
+		return
+	}
+
 	prefetchRequest := service.PrefetchRequest{
 		Bucket:  apiReq.Bucket,
 		Prefix:  apiReq.Prefix,

@@ -18,7 +18,7 @@ func NewAPI(prefetchingService *service.PrefetchingService) *API {
 func (api *API) SetupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/prefetch/", api.HandlePrefetchColumns)
+	mux.HandleFunc("POST /api/prefetch", api.HandlePrefetchColumns)
 
 	return mux
 }
