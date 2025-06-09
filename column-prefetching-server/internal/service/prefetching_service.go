@@ -49,9 +49,13 @@ func NewPrefetchingService(
 	}
 }
 
+// PrefetchColumns is the primary entrypoint function of the service. It is responsible for orchestrating the
+// prefetching process, fetching the requested columns from S3 and caching them in ElastiCache. It does this by first
+// getting a list of all parquet files in the requested location, then it processes each file in parallel, fetching the
+// requested columns and storing them in ElastiCache. The service is configured with a concurrency limit, which is the
+// number of concurrent goroutines that will be used to process the files.
 func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req PrefetchRequest) error {
 	files, err := service.S3Service.ListParquetFiles(ctx, req.Bucket, req.Prefix)
-
 	if err != nil {
 		return fmt.Errorf("failed to list parquet files: %w", err)
 	}
@@ -93,12 +97,13 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 
 	wg.Wait()
 
-	fmt.Printf("Total sequential time spent making S3 Requests: %d ms \n", GetTotalS3CPUTime())
-	fmt.Printf("Total sequential time spent making ElastiCache Requests: %d ms \n", GetTotalCacheCPUTime())
+	fmt.Printf("Total sequential time spent making S3 Requests: %d seconds \n", GetTotalS3CPUTime())
+	fmt.Printf("Total sequential time spent making ElastiCache Requests: %d seconds \n", GetTotalCacheCPUTime())
 
 	return nil
 }
 
+// prefetchFileColumns is responsible for orchestrating the prefetching of column data for a given parquet file.
 func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, bucket string, file types.Object, columnSet map[string]struct{}) error {
 	footerData, _ := service.S3Service.GetParquetFileFooter(ctx, bucket, *file.Key, *file.Size)
 
@@ -110,17 +115,7 @@ func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, buck
 	for _, requestedColumn := range requestedColumns {
 		wg.Add(1)
 
-		go func(requestedColumn RequestedColumn) {
-			defer wg.Done()
-
-			sem <- struct{}{}
-
-			defer func() { <-sem }()
-
-			columnData, _ := service.S3Service.GetColumnData(ctx, bucket, *file.Key, requestedColumn)
-			service.CacheService.CacheColumnData(columnData)
-
-		}(requestedColumn)
+		go service.prefetchColumn(ctx, bucket, *file.Key, requestedColumn, sem, &wg)
 	}
 
 	wg.Wait()
@@ -129,6 +124,19 @@ func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, buck
 
 }
 
+// prefetchColumn is responsible for sending the required work to the S3Service and CacheService to prefetch the
+// requested column data from the parquet file, storing it in the cache.
+func (service *PrefetchingService) prefetchColumn(ctx context.Context, bucket string, fileKey string, requestedColumn RequestedColumn, sem chan struct{}, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	sem <- struct{}{}
+	defer func() { <-sem }()
+
+	columnData, _ := service.S3Service.GetColumnData(ctx, bucket, fileKey, requestedColumn)
+	service.CacheService.CacheColumnData(columnData)
+}
+
+// getRequestedColumns is responsible for extracting the required column data as determined by the initial HTTP request.
 func getRequestedColumns(footerData *metadata.FileMetaData, columnSet map[string]struct{}) ([]RequestedColumn, error) {
 	// a list of requested columns to be prefetched
 	var requestedColumns []RequestedColumn
