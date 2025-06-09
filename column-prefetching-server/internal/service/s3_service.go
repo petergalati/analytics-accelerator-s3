@@ -75,14 +75,14 @@ func (service *S3Service) ListParquetFiles(ctx context.Context, bucket string, p
 }
 
 func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket string, key string, fileSize int64) (*metadata.FileMetaData, error) {
-	rangeStart := fileSize - 8
+	oneMB := int64(1024 * 1024)
+
+	rangeStart := fileSize - oneMB
 	rangeEnd := fileSize - 1
 
 	rangeHeader := fmt.Sprintf("bytes=%d-%d", rangeStart, rangeEnd)
 
-	// TODO: combine GET for last 8 bytes and GET for footer in to a single 1 MB request.
-
-	// make request for only the last 8 bytes of the Parquet file
+	// Make request for only the last 1 MB of the Parquet file. This contains all necessary data to retrieve the footer.
 	startTime := time.Now()
 	result, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
@@ -95,43 +95,29 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 
 	defer result.Body.Close()
 
-	footerBytes, _ := io.ReadAll(result.Body)
+	lastMB, _ := io.ReadAll(result.Body)
 
 	// verify last 4 bytes are equal to PAR1
 	parquetMagic := []byte{0x50, 0x41, 0x52, 0x31}
-	if !bytes.Equal(footerBytes[4:], parquetMagic) {
-		return nil, fmt.Errorf("invalid Parquet magic string at end of file %s/%s. Expected %x, got %x", bucket, key, parquetMagic, footerBytes[4:])
+	if !bytes.Equal(lastMB[len(lastMB)-4:], parquetMagic) {
+		return nil, fmt.Errorf("invalid Parquet magic string at end of file %s/%s. Expected %x, got %x", bucket, key, parquetMagic, lastMB[4:])
 	}
 
-	footerLengthBytes := footerBytes[:4]
+	footerLengthBytes := lastMB[len(lastMB)-8 : len(lastMB)-4]
 	var footerLength int32
 
 	buf := bytes.NewReader(footerLengthBytes)
 	err := binary.Read(buf, binary.LittleEndian, &footerLength)
 
-	// now we have footerLength, we can make the S3 request to get actual footer content
-
-	rangeStart = fileSize - 8 - int64(footerLength)
-	rangeEnd = fileSize - 9
-	rangeHeader = fmt.Sprintf("bytes=%d-%d", rangeStart, rangeEnd)
-
-	startTime = time.Now()
-	footerResult, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-		Range:  aws.String(rangeHeader),
-	})
-	elapsedTime = time.Since(startTime)
-
-	AddDurationToTotalS3CPUTime(elapsedTime)
-
-	defer footerResult.Body.Close()
-
-	footerContent, err := io.ReadAll(footerResult.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read footer content: %w", err)
 	}
 
+	// now we have footerLength, we can make retrieve the actual footer content
+	footerStart := oneMB - 8 - int64(footerLength)
+	footerEnd := oneMB - 8
+
+	footerContent := lastMB[footerStart:footerEnd]
 	fileMetadata, _ := metadata.NewFileMetaData(footerContent, nil)
 
 	return fileMetadata, nil
