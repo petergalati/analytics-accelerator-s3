@@ -46,7 +46,7 @@ public class LogicalIOConfiguration {
   private static final String DEFAULT_JSON_FORMAT_SELECTOR_REGEX = "^.*\\.(json|JSON)$";
   private static final String DEFAULT_TXT_FORMAT_SELECTOR_REGEX = "^.*\\.(txt|TXT)$";
   private static final PrefetchMode DEFAULT_PREFETCHING_MODE = PrefetchMode.ROW_GROUP;
-  private static final boolean DEFAULT_ENABLE_COLUMN_DATA_CACHING = false;
+  private static final boolean DEFAULT_COLUMN_DATA_CACHING_ENABLED = false;
   private static final String DEFAULT_CPS_ENDPOINT = "";
 
   private static final long DEFAULT_PARTITION_SIZE = 128 * ONE_MB;
@@ -127,9 +127,9 @@ public class LogicalIOConfiguration {
   private static final String TXT_FORMAT_SELECTOR_REGEX = "txt.format.selector.regex";
 
   /** Enable column data caching with column prefetching server */
-  @Builder.Default private boolean enableColumnDataCaching = DEFAULT_ENABLE_COLUMN_DATA_CACHING;
+  @Builder.Default private boolean columnDataCachingEnabled = DEFAULT_COLUMN_DATA_CACHING_ENABLED;
 
-  private static final String ENABLE_COLUMN_DATA_CACHING_KEY = "columndatacache.enabled";
+  private static final String COLUMN_DATA_CACHING_ENABLED_KEY = "columndatacache.enabled";
 
   /** Column prefetching server endpoint */
   @Builder.Default private String cpsEndpoint = DEFAULT_CPS_ENDPOINT;
@@ -188,9 +188,9 @@ public class LogicalIOConfiguration {
             configuration.getString(JSON_FORMAT_SELECTOR_REGEX, DEFAULT_JSON_FORMAT_SELECTOR_REGEX))
         .txtFormatSelectorRegex(
             configuration.getString(TXT_FORMAT_SELECTOR_REGEX, DEFAULT_TXT_FORMAT_SELECTOR_REGEX))
-        .enableColumnDataCaching(
+        .columnDataCachingEnabled(
             configuration.getBoolean(
-                ENABLE_COLUMN_DATA_CACHING_KEY, DEFAULT_ENABLE_COLUMN_DATA_CACHING))
+                COLUMN_DATA_CACHING_ENABLED_KEY, DEFAULT_COLUMN_DATA_CACHING_ENABLED))
         .cpsEndpoint(configuration.getString(CPS_ENDPOINT_KEY, DEFAULT_CPS_ENDPOINT))
         .build();
   }
@@ -217,8 +217,8 @@ public class LogicalIOConfiguration {
     builder.append("\ttxtFormatSelectorRegex: " + txtFormatSelectorRegex + "\n");
     builder.append("\tprefetchingMode: " + prefetchingMode + "\n");
     builder.append("\tpartitionSize: " + partitionSize + "\n");
-    builder.append("\tenableColumnDataCaching: " + enableColumnDataCaching + "\n");
-    if (enableColumnDataCaching) {
+    builder.append("\tcolumnDataCachingEnabled: " + columnDataCachingEnabled + "\n");
+    if (columnDataCachingEnabled) {
       builder.append("\tcpsEndpoint: " + cpsEndpoint + "\n");
     }
 

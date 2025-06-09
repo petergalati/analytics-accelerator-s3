@@ -109,7 +109,7 @@ public class ParquetPredictivePrefetchingTask {
     this.logicalIOConfiguration = logicalIOConfiguration;
     this.parquetColumnPrefetchStore = parquetColumnPrefetchStore;
 
-    if (logicalIOConfiguration.isEnableColumnDataCaching()
+    if (logicalIOConfiguration.isColumnDataCachingEnabled()
         && ParquetPredictivePrefetchingTask.columnPrefetchingServerClient == null
         && columnPrefetchingServerClient != null) {
       ParquetPredictivePrefetchingTask.columnPrefetchingServerClient =
@@ -233,7 +233,7 @@ public class ParquetPredictivePrefetchingTask {
             LOG.info("HERE IS THE S3 URI KEY: {}", this.s3Uri.getBucket());
             LOG.info("_____________________________-");
 
-            if (this.logicalIOConfiguration.isEnableColumnDataCaching()) {
+            if (this.logicalIOConfiguration.isColumnDataCachingEnabled()) {
               try (Response response =
                   columnPrefetchingServerClient.prefetchColumns(
                       this.s3Uri.getBucket(),

@@ -85,7 +85,7 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
         new MetadataStore(objectClient, telemetry, configuration.getPhysicalIOConfiguration());
     this.objectFormatSelector = new ObjectFormatSelector(configuration.getLogicalIOConfiguration());
 
-    if (configuration.getPhysicalIOConfiguration().isEnableTailMetadataCaching()) {
+    if (configuration.getPhysicalIOConfiguration().isTailMetadataCachingEnabled()) {
       this.cache =
           new ValkeyCacheImpl(configuration.getPhysicalIOConfiguration().getCacheEndpoint());
       this.executorService =
@@ -95,7 +95,7 @@ public class S3SeekableInputStreamFactory implements AutoCloseable {
       this.executorService = null;
     }
 
-    if (configuration.getLogicalIOConfiguration().isEnableColumnDataCaching()) {
+    if (configuration.getLogicalIOConfiguration().isColumnDataCachingEnabled()) {
       OkHttpClient client = new OkHttpClient();
       this.columnPrefetchingServerClient =
           new ColumnPrefetchingServerClient(
