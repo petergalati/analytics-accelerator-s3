@@ -208,11 +208,13 @@ public class PhysicalIOConfiguration {
     Preconditions.checkArgument(blockReadTimeout > 0, "`blockReadTimeout` must be positive");
     Preconditions.checkArgument(blockReadRetryCount > 0, "`blockReadRetryCount` must be positive");
 
-    if (tailMetadataCachingEnabled) {
-      Preconditions.checkArgument(
-          cacheEndpoint != null && !cacheEndpoint.isEmpty(),
-          "`cacheEndpoint` must be set when tail metadata caching is enabled");
-    }
+//    TODO: adjust this to account for column prefetching behaviour
+
+//    if (tailMetadataCachingEnabled) {
+//      Preconditions.checkArgument(
+//          cacheEndpoint != null && !cacheEndpoint.isEmpty(),
+//          "`cacheEndpoint` must be set when tail metadata caching is enabled");
+//    }
 
     this.blobStoreCapacity = blobStoreCapacity;
     this.metadataStoreCapacity = metadataStoreCapacity;

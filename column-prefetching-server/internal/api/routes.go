@@ -3,10 +3,12 @@ package api
 import (
 	"column-prefetching-server/internal/service"
 	"net/http"
+	"sync"
 )
 
 type API struct {
 	PrefetchingService *service.PrefetchingService
+	prefetchCache      sync.Map
 }
 
 func NewAPI(prefetchingService *service.PrefetchingService) *API {

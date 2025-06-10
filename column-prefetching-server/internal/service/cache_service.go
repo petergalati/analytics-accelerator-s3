@@ -37,8 +37,6 @@ func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 func (service *CacheService) CacheColumnData(data ParquetColumnData) error {
 	cacheKey := generateCacheKey(data)
 
-	fmt.Printf("Cache key is: %s \n", cacheKey)
-
 	startTime := time.Now()
 
 	//TODO: the following is how we would batch SET to cache

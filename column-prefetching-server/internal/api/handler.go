@@ -43,22 +43,58 @@ func (api *API) HandlePrefetchColumns(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("bucket is: %s, prefix is: %s, columns is: %s \n", apiReq.Bucket, apiReq.Prefix, apiReq.Columns)
 
-	w.WriteHeader(http.StatusAccepted)
+	newColumns := api.getNewColumnsToFetch(apiReq)
 
-	prefetchRequest := service.PrefetchRequest{
-		Bucket:  apiReq.Bucket,
-		Prefix:  apiReq.Prefix,
-		Columns: apiReq.Columns,
+	// return response if there are no new columns to fetch
+	if len(newColumns) == 0 {
+		w.WriteHeader(http.StatusOK)
+		return
 	}
 
-	// TODO: probably want to tweak this context
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	// send a response and start fetching in goroutine so the process is non-blocking
+	w.WriteHeader(http.StatusAccepted)
 
-	startTime := time.Now()
-	api.PrefetchingService.PrefetchColumns(ctx, prefetchRequest)
-	elapsedTime := time.Since(startTime)
+	go func() {
+		// TODO: probably want to tweak this context
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
 
-	fmt.Printf("Prefetching took: %f seconds\n", elapsedTime.Seconds())
+		prefetchRequest := service.PrefetchRequest{
+			Bucket:  apiReq.Bucket,
+			Prefix:  apiReq.Prefix,
+			Columns: newColumns,
+		}
 
+		startTime := time.Now()
+		api.PrefetchingService.PrefetchColumns(ctx, prefetchRequest)
+		elapsedTime := time.Since(startTime)
+
+		fmt.Printf("Prefetching took: %f seconds\n", elapsedTime.Seconds())
+	}()
+
+}
+
+// getNewColumnsToFetch checks against prefetchCache to filter out columns that have already been prefetched in a prior
+// request for a given bucket and prefix.
+func (api *API) getNewColumnsToFetch(apiReq ColumnPrefetchRequest) []string {
+	cacheKey := fmt.Sprintf("%s:%s", apiReq.Bucket, apiReq.Prefix)
+
+	var prefetchedColumnsSet map[string]struct{}
+
+	if val, found := api.prefetchCache.Load(cacheKey); found {
+		prefetchedColumnsSet = val.(map[string]struct{})
+	} else {
+		prefetchedColumnsSet = make(map[string]struct{})
+	}
+
+	var newColumns []string
+	for _, col := range apiReq.Columns {
+		if _, exists := prefetchedColumnsSet[col]; !exists {
+			newColumns = append(newColumns, col)
+			prefetchedColumnsSet[col] = struct{}{}
+		}
+	}
+
+	api.prefetchCache.Store(cacheKey, prefetchedColumnsSet)
+	return newColumns
 }

@@ -67,6 +67,8 @@ func (service *PrefetchingService) PrefetchColumns(ctx context.Context, req Pref
 		columnSet[column] = struct{}{}
 	}
 
+	// TODO: throughout the code, the semaphore pattern is causing serious memory issues. Try switching to worker pool.
+
 	// creating a buffered channel, of length concurrencyLimit to act as a semaphore. This limits the number of concurrent goroutines.
 	sem := make(chan struct{}, service.Config.ConcurrencyLimit)
 	var wg sync.WaitGroup

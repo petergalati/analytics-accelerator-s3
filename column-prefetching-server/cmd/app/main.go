@@ -5,7 +5,6 @@ import (
 	"column-prefetching-server/internal/project-config"
 	"column-prefetching-server/internal/service"
 	"log"
-
 	"net/http"
 )
 
