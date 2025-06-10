@@ -18,7 +18,8 @@ import (
 )
 
 type S3Service struct {
-	s3Client *s3.Client
+	S3Client *s3.Client
+	Config   project_config.S3Config
 }
 
 func NewS3Service(cfg project_config.S3Config) (*S3Service, error) {
@@ -35,7 +36,8 @@ func NewS3Service(cfg project_config.S3Config) (*S3Service, error) {
 	s3Client := s3.NewFromConfig(sdkConfig)
 
 	return &S3Service{
-		s3Client: s3Client,
+		S3Client: s3Client,
+		Config:   cfg,
 	}, nil
 }
 
@@ -47,7 +49,7 @@ func (service *S3Service) ListParquetFiles(ctx context.Context, bucket string, p
 		Prefix: aws.String(prefix),
 	}
 	var objects []types.Object
-	objectPaginator := s3.NewListObjectsV2Paginator(service.s3Client, input)
+	objectPaginator := s3.NewListObjectsV2Paginator(service.S3Client, input)
 
 	for objectPaginator.HasMorePages() {
 
@@ -84,7 +86,7 @@ func (service *S3Service) GetParquetFileFooter(ctx context.Context, bucket strin
 
 	// Make request for only the last 1 MB of the Parquet file. This contains all necessary data to retrieve the footer.
 	startTime := time.Now()
-	result, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
+	result, _ := service.S3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 		Range:  aws.String(rangeHeader),
@@ -127,7 +129,7 @@ func (service *S3Service) GetColumnData(ctx context.Context, bucket string, key 
 	rangeHeader := fmt.Sprintf("bytes=%d-%d", requestedColumn.Start, requestedColumn.End)
 
 	startTime := time.Now()
-	columnDataResult, _ := service.s3Client.GetObject(ctx, &s3.GetObjectInput{
+	columnDataResult, _ := service.S3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 		Range:  aws.String(rangeHeader),

@@ -150,7 +150,7 @@ func getRequestedColumns(footerData *metadata.FileMetaData, columnSet map[string
 
 			// we only want to process columns which are requested by AAL
 			if _, found := columnSet[columnName]; found {
-				if *columnChunk.MetaData.DictionaryPageOffset != 0 {
+				if columnChunk.MetaData.DictionaryPageOffset != nil && *columnChunk.MetaData.DictionaryPageOffset != 0 {
 					//	we are dealing with a dictionary
 					requestedColumns = append(requestedColumns,
 						RequestedColumn{

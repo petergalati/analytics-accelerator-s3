@@ -192,8 +192,6 @@ public class PhysicalIOConfiguration {
       long blockReadTimeout,
       int blockReadRetryCount,
       boolean tailMetadataCachingEnabled,
-      boolean enableColumnDataCaching,
-      String cpsEndpoint,
       String cacheEndpoint,
       boolean enableCacheFlush) {
     Preconditions.checkArgument(blobStoreCapacity > 0, "`blobStoreCapacity` must be positive");

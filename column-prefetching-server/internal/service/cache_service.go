@@ -4,11 +4,13 @@ import (
 	project_config "column-prefetching-server/internal/project-config"
 	"fmt"
 	"github.com/valkey-io/valkey-glide/go/api"
+	"github.com/valkey-io/valkey-glide/go/api/options"
 	"time"
 )
 
 type CacheService struct {
-	elastiCacheClient api.GlideClusterClientCommands
+	ElastiCacheClient api.GlideClusterClientCommands
+	Config            project_config.CacheConfig
 }
 
 func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
@@ -27,21 +29,29 @@ func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 	}
 
 	return &CacheService{
-		elastiCacheClient: client,
+		ElastiCacheClient: client,
+		Config:            cfg,
 	}, nil
 }
 
 func (service *CacheService) CacheColumnData(data ParquetColumnData) error {
 	cacheKey := generateCacheKey(data)
 
+	fmt.Printf("Cache key is: %s \n", cacheKey)
+
 	startTime := time.Now()
 
 	//TODO: the following is how we would batch SET to cache
-	//_, err := service.elastiCacheClient.MSet(map[string]string{
+	//_, err := service.ElastiCacheClient.MSet(map[string]string{
 	//	cacheKey: string(data.Data),
 	//})
 
-	_, err := service.elastiCacheClient.Set(cacheKey, string(data.Data))
+	expiry := options.NewExpiry().SetType(options.Seconds).SetCount(uint64(service.Config.TimeToLive))
+	setOptions := options.NewSetOptions().SetExpiry(expiry)
+
+	//fmt.Printf("time to live is: %d seconds \n", expiry.Count)
+
+	_, err := service.ElastiCacheClient.SetWithOptions(cacheKey, string(data.Data), *setOptions)
 	elapsedTime := time.Since(startTime)
 
 	AddDurationToTotalCacheCPUTime(elapsedTime)

@@ -230,20 +230,25 @@ public class ParquetPredictivePrefetchingTask {
                 getRecentColumns(columnMappers.getOffsetIndexToColumnMap(), isDictionary)
                     .toString());
             LOG.info("HERE IS THE S3 URI BUCKET: {}", this.s3Uri.getBucket());
-            LOG.info("HERE IS THE S3 URI KEY: {}", this.s3Uri.getBucket());
+            LOG.info("HERE IS THE S3 URI KEY: {}", this.s3Uri.getKey());
             LOG.info("_____________________________-");
 
             if (this.logicalIOConfiguration.isColumnDataCachingEnabled()) {
+              LOG.info("SENDING TO CPS!!!!");
+
               try (Response response =
                   columnPrefetchingServerClient.prefetchColumns(
                       this.s3Uri.getBucket(),
                       this.s3Uri.getKey(),
                       getRecentColumns(columnMappers.getOffsetIndexToColumnMap(), isDictionary))) {
 
-                LOG.info(response.message());
+                LOG.info("The response from CPS is: {}", response.message());
               } catch (IOException e) {
+                LOG.info("theres an error... {}", e.toString());
                 throw new IOException("Error prefetching", e);
               }
+              LOG.info("DONE SENDING TO CPS!!!!");
+
             }
 
             for (String recentColumn :

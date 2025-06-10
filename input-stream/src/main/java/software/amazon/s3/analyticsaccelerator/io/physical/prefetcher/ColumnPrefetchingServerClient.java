@@ -20,10 +20,13 @@ import java.util.Set;
 import okhttp3.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ColumnPrefetchingServerClient {
   private final OkHttpClient client;
   private final String serverUrl;
+  private static final Logger LOG = LoggerFactory.getLogger(ColumnPrefetchingServerClient.class);
 
   public ColumnPrefetchingServerClient(OkHttpClient client, String serverUrl) {
     this.client = client;
@@ -32,15 +35,25 @@ public class ColumnPrefetchingServerClient {
 
   public Response prefetchColumns(String bucket, String prefix, Set<String> columns)
       throws IOException {
+
+    LOG.info("Now prefetching columns......");
+
     JSONObject json = new JSONObject();
     json.put("bucket", bucket);
-    json.put("prefix", prefix);
+    json.put("prefix", prefix.substring(0, prefix.lastIndexOf("/")));
     json.put("columns", new JSONArray(columns));
 
     RequestBody body =
         RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
 
+
+    LOG.info("The request body to CPS is: {}", json.toString());
+    LOG.info("The cps endpoint is: {}", serverUrl);
+
+
+
     Request request = new Request.Builder().url(serverUrl + "/prefetch").post(body).build();
+
 
     return client.newCall(request).execute();
   }

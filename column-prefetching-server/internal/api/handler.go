@@ -2,6 +2,7 @@ package api
 
 import (
 	"column-prefetching-server/internal/service"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -40,17 +41,24 @@ func (api *API) HandlePrefetchColumns(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("bucket is: %s, prefix is: %s, columns is: %s \n", apiReq.Bucket, apiReq.Prefix, apiReq.Columns)
+
+	w.WriteHeader(http.StatusAccepted)
+
 	prefetchRequest := service.PrefetchRequest{
 		Bucket:  apiReq.Bucket,
 		Prefix:  apiReq.Prefix,
 		Columns: apiReq.Columns,
 	}
 
+	// TODO: probably want to tweak this context
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	startTime := time.Now()
-	api.PrefetchingService.PrefetchColumns(r.Context(), prefetchRequest)
+	api.PrefetchingService.PrefetchColumns(ctx, prefetchRequest)
 	elapsedTime := time.Since(startTime)
 
 	fmt.Printf("Prefetching took: %f seconds\n", elapsedTime.Seconds())
 
-	w.WriteHeader(http.StatusAccepted)
 }
