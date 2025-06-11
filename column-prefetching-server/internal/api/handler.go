@@ -41,7 +41,7 @@ func (api *API) HandlePrefetchColumns(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("bucket is: %s, prefix is: %s, columns is: %s \n", apiReq.Bucket, apiReq.Prefix, apiReq.Columns)
+	//fmt.Printf("bucket is: %s, prefix is: %s, columns is: %s \n", apiReq.Bucket, apiReq.Prefix, apiReq.Columns)
 
 	newColumns := api.getNewColumnsToFetch(apiReq)
 

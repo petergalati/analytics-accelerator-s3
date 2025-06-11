@@ -17,11 +17,6 @@ import (
 	"time"
 )
 
-type S3Service struct {
-	S3Client *s3.Client
-	Config   project_config.S3Config
-}
-
 func NewS3Service(cfg project_config.S3Config) (*S3Service, error) {
 	ctx := context.Background()
 

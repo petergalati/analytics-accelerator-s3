@@ -8,11 +8,6 @@ import (
 	"time"
 )
 
-type CacheService struct {
-	ElastiCacheClient api.GlideClusterClientCommands
-	Config            project_config.CacheConfig
-}
-
 func NewCacheService(cfg project_config.CacheConfig) (*CacheService, error) {
 	// TODO: decide if we want to pass in the host and port from AAL via the HTTP request to CPS endpoint
 	host := cfg.ElastiCacheEndpoint
