@@ -93,6 +93,7 @@ func (service *PrefetchingService) prefetchFileColumns(ctx context.Context, buck
 		}
 	}
 
+	close(jobs)
 	wg.Wait()
 
 	return nil
